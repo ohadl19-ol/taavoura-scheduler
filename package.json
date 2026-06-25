@@ -1,0 +1,58 @@
+{
+  "name": "taavoura-scheduler",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ניהול סידור עבודה חודשי לחטיבות תביעות תעבורה",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "ELECTRON_RUN_AS_NODE= electron-vite dev",
+    "build": "electron-vite build",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:mac:universal": "npm run build && electron-builder --mac --universal",
+    "preview": "electron-vite preview"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^32.3.3",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^2.3.0",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "typescript": "~5.4.0",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^5.4.0"
+  },
+  "build": {
+    "appId": "il.police.taavoura.scheduler",
+    "productName": "סידור עבודה - תעבורה",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
