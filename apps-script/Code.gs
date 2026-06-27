@@ -1,138 +1,122 @@
-// Google Apps Script — taavoura-scheduler constraints backend
-// הדבק קוד זה ב-Apps Script המחובר ל-Google Sheet שלך
-// פרסם כ-Web App: Execute as "Me", Who has access "Anyone"
-
-const SHEET_NAME = 'אילוצים'
-
-// ── Entry point ──────────────────────────────────────────────────────────────
+var SHEET_NAME = 'אילוצים';
+var LOG_SHEET  = 'יומן הגשות';
 
 function doPost(e) {
   try {
-    const raw  = e.postData ? e.postData.contents : ''
-    const data = JSON.parse(raw)
-    writeConstraints(data)
-    return jsonResponse({ ok: true })
+    var raw  = e.postData ? e.postData.contents : '';
+    var data = JSON.parse(raw);
+    writeConstraints(data);
+    return jsonResponse({ ok: true });
   } catch (err) {
-    return jsonResponse({ ok: false, error: err.message })
+    return jsonResponse({ ok: false, error: err.message });
   }
 }
 
-// Allow browser preflight (OPTIONS) — needed for some fetch configurations
 function doGet(e) {
-  return jsonResponse({ ok: true, message: 'taavoura-constraints endpoint active' })
+  return jsonResponse({ ok: true, status: 'active' });
 }
 
 function jsonResponse(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON)
+    .setMimeType(ContentService.MimeType.JSON);
 }
-
-// ── Core logic ───────────────────────────────────────────────────────────────
 
 function writeConstraints(data) {
-  const { name, start, end, constraints } = data
-  if (!name || !start || !end) throw new Error('missing required fields')
+  var name        = data.name;
+  var start       = data.start;
+  var end         = data.end;
+  var constraints = data.constraints || [];
 
-  const ss    = SpreadsheetApp.getActiveSpreadsheet()
-  let   sheet = ss.getSheetByName(SHEET_NAME)
+  if (!name || !start || !end) throw new Error('missing fields');
 
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME)
-    // Freeze header row
-    sheet.setFrozenRows(1)
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.setFrozenRows(1);
   }
 
-  // ── Build date index (column A) ──
-  ensureDates(sheet, start, end)
+  ensureDates(sheet, start, end);
 
-  // Re-read after ensuring dates exist
-  const allData = sheet.getDataRange().getValues()
-  const dateToRow = {}
-  for (let i = 1; i < allData.length; i++) {
-    const v = allData[i][0]
-    if (v) dateToRow[String(v).trim()] = i + 1  // 1-based row
+  var allData  = sheet.getDataRange().getValues();
+  var dateToRow = {};
+  for (var i = 1; i < allData.length; i++) {
+    var v = String(allData[i][0]).trim();
+    if (v) dateToRow[v] = i + 1;
   }
 
-  // ── Find or create employee column ──
-  const headerRow  = allData[0] || []
-  let   colIdx     = headerRow.findIndex(h => String(h).trim() === name)
+  var headerRow = allData[0] || [];
+  var colIdx = -1;
+  for (var h = 0; h < headerRow.length; h++) {
+    if (String(headerRow[h]).trim() === name) { colIdx = h; break; }
+  }
   if (colIdx === -1) {
-    colIdx = headerRow.filter(Boolean).length  // next empty header slot
-    sheet.getRange(1, colIdx + 1).setValue(name)
-    // Style header cell
-    const hCell = sheet.getRange(1, colIdx + 1)
-    hCell.setBackground('#1e3a5f')
-    hCell.setFontColor('#ffffff')
-    hCell.setFontWeight('bold')
+    colIdx = 0;
+    while (colIdx < headerRow.length && headerRow[colIdx]) colIdx++;
+    var hCell = sheet.getRange(1, colIdx + 1);
+    hCell.setValue(name);
+    hCell.setBackground('#1e3a5f');
+    hCell.setFontColor('#ffffff');
+    hCell.setFontWeight('bold');
   }
 
-  // ── Clear existing constraints for this employee ──
-  const lastRow = sheet.getLastRow()
+  var lastRow = sheet.getLastRow();
   if (lastRow > 1) {
-    sheet.getRange(2, colIdx + 1, lastRow - 1, 1).clearContent()
+    sheet.getRange(2, colIdx + 1, lastRow - 1, 1).clearContent();
   }
 
-  // ── Write new constraints ──
-  constraints.forEach(({ date, label }) => {
-    const row = dateToRow[date]
-    if (row) sheet.getRange(row, colIdx + 1).setValue(label)
-  })
+  for (var c = 0; c < constraints.length; c++) {
+    var row = dateToRow[constraints[c].date];
+    if (row) sheet.getRange(row, colIdx + 1).setValue(constraints[c].label);
+  }
 
-  // ── Log submission ──
-  logSubmission(name, start, end, constraints.length)
+  logSubmission(ss, name, start, end, constraints.length);
 }
-
-// ── Ensure all dates in range exist as rows in column A ──────────────────────
 
 function ensureDates(sheet, start, end) {
-  const tz       = Session.getScriptTimeZone()
-  const existing = {}
+  var tz       = Session.getScriptTimeZone();
+  var existing = {};
+  var lastRow  = sheet.getLastRow();
 
-  // Read current date column
-  const lastRow  = sheet.getLastRow()
   if (lastRow > 1) {
-    const colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues()
-    colA.forEach(([v]) => { if (v) existing[String(v).trim()] = true })
+    var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < colA.length; i++) {
+      var v = String(colA[i][0]).trim();
+      if (v) existing[v] = true;
+    }
   }
 
-  // Generate dates in range
-  const cur = new Date(start + 'T00:00:00')
-  const end_ = new Date(end   + 'T00:00:00')
-  const toAdd = []
+  var cur   = new Date(start + 'T00:00:00');
+  var endD  = new Date(end   + 'T00:00:00');
+  var toAdd = [];
 
-  while (cur <= end_) {
-    const dateStr = Utilities.formatDate(cur, tz, 'yyyy-MM-dd')
-    if (!existing[dateStr]) toAdd.push(dateStr)
-    cur.setDate(cur.getDate() + 1)
+  while (cur <= endD) {
+    var ds = Utilities.formatDate(cur, tz, 'yyyy-MM-dd');
+    if (!existing[ds]) toAdd.push([ds]);
+    cur.setDate(cur.getDate() + 1);
   }
 
-  if (toAdd.length === 0) return
+  if (toAdd.length === 0) return;
 
-  // Append missing dates
-  const nextRow = sheet.getLastRow() + 1
-  const data    = toAdd.map(d => [d])
-  sheet.getRange(nextRow, 1, data.length, 1).setValues(data)
+  var nextRow = sheet.getLastRow() + 1;
+  sheet.getRange(nextRow, 1, toAdd.length, 1).setValues(toAdd);
 
-  // Sort by date (column A), skipping header
-  const total = sheet.getLastRow()
+  var total = sheet.getLastRow();
   if (total > 2) {
     sheet.getRange(2, 1, total - 1, sheet.getLastColumn())
-      .sort({ column: 1, ascending: true })
+      .sort({ column: 1, ascending: true });
   }
 }
 
-// ── Submission log (optional sheet) ─────────────────────────────────────────
-
-function logSubmission(name, start, end, count) {
-  const ss   = SpreadsheetApp.getActiveSpreadsheet()
-  let   log  = ss.getSheetByName('יומן הגשות')
+function logSubmission(ss, name, start, end, count) {
+  var log = ss.getSheetByName(LOG_SHEET);
   if (!log) {
-    log = ss.insertSheet('יומן הגשות')
-    log.appendRow(['זמן', 'שם', 'תקופה', 'מספר אילוצים'])
-    log.getRange(1, 1, 1, 4).setFontWeight('bold')
+    log = ss.insertSheet(LOG_SHEET);
+    log.appendRow(['זמן', 'שם', 'תקופה', 'מספר אילוצים']);
+    log.getRange(1, 1, 1, 4).setFontWeight('bold');
   }
-  const tz   = Session.getScriptTimeZone()
-  const now  = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm')
-  log.appendRow([now, name, `${start} – ${end}`, count])
+  var tz  = Session.getScriptTimeZone();
+  var now = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm');
+  log.appendRow([now, name, start + ' - ' + end, count]);
 }
