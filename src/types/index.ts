@@ -4,6 +4,7 @@ export interface AppConfig {
   prosecutors: string[]
   judges: string[]
   generalOptions?: string[]   // if absent, falls back to GENERAL_OPTIONS constant
+  constraintsScriptUrl?: string  // Google Apps Script web app URL
 }
 
 export type CellCategory = 'judge' | 'supervisor' | 'general'
@@ -17,12 +18,23 @@ export interface CellValue {
 // key: "dayIndex-prosecutorIndex" (0-based)
 export type Assignments = Record<string, CellValue | null>
 
+export type ConstraintStatus = 'pending' | 'approved' | 'rejected'
+
+export interface ConstraintEntry {
+  label: string
+  status: ConstraintStatus
+}
+
+// key: "dayIndex-prosecutorIndex" (0-based) — same key scheme as Assignments
+export type Constraints = Record<string, ConstraintEntry>
+
 export interface ScheduleData {
   id: string           // "YYYYMMDD-YYYYMMDD-vN"
   startDate: string    // "YYYY-MM-DD"
   endDate: string      // "YYYY-MM-DD"
   version: number
   assignments: Assignments
+  constraints?: Constraints  // imported from Google Sheets CSV
   createdAt: string
   updatedAt: string
 }

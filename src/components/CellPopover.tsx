@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react'
-import type { CellValue, AppConfig } from '../types'
+import type { CellValue, AppConfig, ConstraintEntry } from '../types'
 import { SUPERVISOR_OPTIONS, GENERAL_OPTIONS } from '../types'
 
-// Resolve the effective general options for this config
 function getGeneralOpts(config: AppConfig): string[] {
   return config.generalOptions ?? GENERAL_OPTIONS
 }
@@ -14,25 +13,31 @@ interface Props {
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   isWeekend?: boolean
-  fillMode?: boolean  // when true: filling a whole column; "נקה" clears all cells in column
+  fillMode?: boolean
+  constraint?: ConstraintEntry        // אילוץ ממתין/מאושר לתא זה
+  onApprove?: () => void              // אשר אילוץ (ממלא אוטומטית)
+  onReject?: () => void               // דחה אילוץ (מוחק אותו)
 }
 
-export default function CellPopover({ config, current, onSelect, onClose, anchorRef, isWeekend, fillMode }: Props) {
-  const popRef = useRef<HTMLDivElement>(null)
+export default function CellPopover({
+  config, current, onSelect, onClose, anchorRef,
+  isWeekend, fillMode,
+  constraint, onApprove, onReject,
+}: Props) {
+  const popRef    = useRef<HTMLDivElement>(null)
   const customRef = useRef<HTMLInputElement>(null)
 
   // Position relative to anchor
   useEffect(() => {
     if (!anchorRef.current || !popRef.current) return
     const rect = anchorRef.current.getBoundingClientRect()
-    const pop = popRef.current
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    let top = rect.bottom + 6
+    const pop  = popRef.current
+    const vw = window.innerWidth, vh = window.innerHeight
+    let top  = rect.bottom + 6
     let left = rect.left
     if (left + 340 > vw) left = vw - 350
-    if (top + 420 > vh) top = rect.top - 430
-    pop.style.top = `${top}px`
+    if (top  + 480 > vh) top  = rect.top - 490
+    pop.style.top  = `${top}px`
     pop.style.left = `${left}px`
   }, [anchorRef])
 
@@ -45,14 +50,43 @@ export default function CellPopover({ config, current, onSelect, onClose, anchor
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  const pick = (val: CellValue | null) => { onSelect(val); onClose() }
+  const pick = (val: CellValue | null) => { onSelect(val) }
 
   const isActive = (val: CellValue) =>
     current?.category === val.category && current?.label === val.label
 
+  // ── Constraint banner (shared between weekend and weekday popover) ─────────
+  const constraintBanner = constraint && constraint.status === 'pending' ? (
+    <div className="popover-constraint-banner">
+      <div className="popover-constraint-label">
+        ⚠️ בקשת עובד: <strong>{constraint.label}</strong>
+      </div>
+      <div className="popover-constraint-actions">
+        <button
+          className="constraint-approve-btn"
+          onClick={() => { onApprove?.() }}
+        >
+          ✓ אשר ומלא
+        </button>
+        <button
+          className="constraint-reject-btn"
+          onClick={() => { onReject?.() }}
+        >
+          ✕ דחה
+        </button>
+      </div>
+    </div>
+  ) : constraint && constraint.status === 'approved' ? (
+    <div className="popover-constraint-banner approved">
+      <span>✓ אילוץ מאושר: <strong>{constraint.label}</strong></span>
+      <button className="constraint-reject-btn" onClick={() => { onReject?.() }}>בטל</button>
+    </div>
+  ) : null
+
   if (isWeekend) {
     return (
       <div className="popover" ref={popRef}>
+        {constraintBanner}
         <div className="popover-section">
           <div className="popover-chips">
             <button
@@ -61,12 +95,7 @@ export default function CellPopover({ config, current, onSelect, onClose, anchor
             >
               🚨 ת. עצורים
             </button>
-            <button
-              className="chip chip-clear"
-              onClick={() => pick(null)}
-            >
-              נקה
-            </button>
+            <button className="chip chip-clear" onClick={() => pick(null)}>נקה</button>
           </div>
         </div>
         <div className="popover-section">
@@ -75,9 +104,8 @@ export default function CellPopover({ config, current, onSelect, onClose, anchor
             className="custom-input"
             placeholder="✏️ אחר…"
             onKeyDown={e => {
-              if (e.key === 'Enter' && customRef.current?.value.trim()) {
+              if (e.key === 'Enter' && customRef.current?.value.trim())
                 pick({ category: 'general', label: customRef.current.value.trim() })
-              }
             }}
           />
         </div>
@@ -87,6 +115,8 @@ export default function CellPopover({ config, current, onSelect, onClose, anchor
 
   return (
     <div className="popover" ref={popRef}>
+      {constraintBanner}
+
       {/* Judges */}
       <div className="popover-section">
         <div className="popover-section-title">⚖️ שופטים</div>
@@ -141,10 +171,7 @@ export default function CellPopover({ config, current, onSelect, onClose, anchor
               {opt}
             </button>
           ))}
-          <button
-            className="chip chip-clear"
-            onClick={() => pick(null)}
-          >
+          <button className="chip chip-clear" onClick={() => pick(null)}>
             {fillMode ? 'נקה עמודה' : 'נקה'}
           </button>
         </div>
@@ -161,9 +188,8 @@ export default function CellPopover({ config, current, onSelect, onClose, anchor
           className="custom-input"
           placeholder="טקסט חופשי…"
           onKeyDown={e => {
-            if (e.key === 'Enter' && customRef.current?.value.trim()) {
+            if (e.key === 'Enter' && customRef.current?.value.trim())
               pick({ category: 'general', label: customRef.current.value.trim() })
-            }
           }}
         />
       </div>

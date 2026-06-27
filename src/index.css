@@ -540,3 +540,153 @@ html, body, #root {
   padding: 5px 8px;
   text-align: center;
 }
+
+/* ── Constraints — cell indicator ──────────────────────────────────────── */
+.cell-has-constraint {
+  position: relative;
+}
+.cell-has-constraint::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 8px 8px 0;
+  border-color: transparent #f59e0b transparent transparent;
+}
+.cell-constraint-tag {
+  display: block;
+  font-size: 10px;
+  margin-top: 2px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cell-constraint-tag.constraint-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+.cell-constraint-tag.constraint-approved {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+/* ── Constraints — day summary in date column ──────────────────────────── */
+.day-constraint-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+.day-constraint-badge {
+  font-size: 9px;
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde68a;
+  border-radius: 3px;
+  padding: 0px 4px;
+  white-space: nowrap;
+}
+
+/* ── Constraints — info bar ────────────────────────────────────────────── */
+.constraints-info-bar {
+  background: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #92400e;
+}
+.import-error-bar {
+  background: #fee2e2;
+  border-bottom: 1px solid #fca5a5;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #991b1b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.import-error-bar button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #991b1b;
+  font-size: 14px;
+}
+
+/* ── Constraints — popover banner ──────────────────────────────────────── */
+.popover-constraint-banner {
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.popover-constraint-banner.approved {
+  background: #f0fdf4;
+  border-color: #86efac;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #166534;
+}
+.popover-constraint-label {
+  font-size: 12px;
+  color: #78350f;
+  margin-bottom: 7px;
+}
+.popover-constraint-actions {
+  display: flex;
+  gap: 6px;
+}
+.constraint-approve-btn {
+  flex: 1;
+  padding: 6px 10px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.constraint-approve-btn:hover { background: #15803d; }
+.constraint-reject-btn {
+  flex: 1;
+  padding: 6px 10px;
+  background: #fff;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.constraint-reject-btn:hover { background: #fee2e2; }
+
+/* ── Import constraints button ─────────────────────────────────────────── */
+.btn-constraints-import {
+  position: relative;
+}
+
+/* ── Link modal ────────────────────────────────────────────────────────── */
+.link-box {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  overflow-x: auto;
+  font-size: 11px;
+  direction: ltr;
+  text-align: left;
+  word-break: break-all;
+}

@@ -11,21 +11,29 @@ export default function App() {
   const { config, loadConfig } = useConfig()
   const [tab, setTab] = useState<Tab>('list')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [configReady, setConfigReady] = useState(false)
 
   useEffect(() => {
-    loadConfig().then(() => {
-      // If no config yet, start at settings
-    })
+    loadConfig().then(() => setConfigReady(true))
   }, [loadConfig])
 
-  // After config loads, decide starting screen
   useEffect(() => {
-    if (config === null) setTab('settings')
-  }, [config])
+    if (configReady && config === null) setTab('settings')
+  }, [configReady, config])
 
   const openEditor = (id: string) => {
     setEditingId(id)
     setTab('editor')
+  }
+
+  if (!configReady) {
+    return (
+      <div className="app">
+        <div className="app-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="loading">טוען…</div>
+        </div>
+      </div>
+    )
   }
 
   return (

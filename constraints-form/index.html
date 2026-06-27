@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>אילוצי סידור עבודה</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, Arial, sans-serif;
+      background: #f0f4f8;
+      color: #1a1a2e;
+      padding-bottom: 90px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .hdr {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 18px 16px 14px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .hdr h1 { font-size: 1.05rem; font-weight: 800; }
+    .hdr p  { font-size: 0.78rem; color: #93c5fd; margin-top: 3px; }
+
+    /* ── Name picker ── */
+    .name-section {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 14px 16px;
+    }
+    .name-section label {
+      display: block;
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .name-section select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: #fff;
+      color: #1a1a2e;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: left 14px center;
+    }
+    .name-section select:focus { outline: none; border-color: #3b82f6; }
+
+    /* ── Summary bar ── */
+    .summary-bar {
+      background: #eff6ff;
+      border-bottom: 1px solid #bfdbfe;
+      padding: 10px 16px;
+      font-size: 0.82rem;
+      color: #1d4ed8;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    .summary-bar.visible { display: flex; }
+    .summary-count {
+      background: #1d4ed8;
+      color: #fff;
+      border-radius: 20px;
+      padding: 1px 8px;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+
+    /* ── Month header ── */
+    .month-hdr {
+      padding: 10px 16px 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    /* ── Day cards ── */
+    .days-list { padding: 0 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+
+    .day-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+      border-right: 4px solid transparent;
+      transition: border-color .15s;
+    }
+    .day-card.weekend {
+      opacity: 0.38;
+      pointer-events: none;
+    }
+    .day-card.has-constraint { border-right-color: #3b82f6; }
+    .day-card.constraint-vacation  { border-right-color: #10b981; }
+    .day-card.constraint-late      { border-right-color: #f59e0b; }
+    .day-card.constraint-early     { border-right-color: #8b5cf6; }
+    .day-card.constraint-home      { border-right-color: #06b6d4; }
+    .day-card.constraint-other     { border-right-color: #6b7280; }
+
+    .day-header {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      gap: 10px;
+      cursor: default;
+    }
+    .day-date  { font-weight: 800; font-size: 1.1rem; min-width: 26px; text-align: center; color: #111; }
+    .day-month { font-size: 0.7rem; color: #9ca3af; min-width: 28px; }
+    .day-dow   { font-size: 0.88rem; color: #374151; flex: 1; }
+    .day-tag {
+      font-size: 0.72rem;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tag-vacation { background: #d1fae5; color: #065f46; }
+    .tag-late     { background: #fef3c7; color: #92400e; }
+    .tag-early    { background: #ede9fe; color: #4c1d95; }
+    .tag-home     { background: #cffafe; color: #164e63; }
+    .tag-other    { background: #f3f4f6; color: #374151; }
+
+    /* ── Constraint buttons ── */
+    .cbtn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 0 14px 12px;
+    }
+    .cbtn {
+      padding: 7px 13px;
+      border-radius: 20px;
+      border: 1.5px solid #e5e7eb;
+      background: #fff;
+      font-size: 0.82rem;
+      color: #374151;
+      cursor: pointer;
+      transition: all .12s;
+      font-family: inherit;
+    }
+    .cbtn:active { transform: scale(0.94); }
+
+    .cbtn.sel-vacation { border-color: #10b981; background: #ecfdf5; color: #065f46; font-weight: 700; }
+    .cbtn.sel-late     { border-color: #f59e0b; background: #fffbeb; color: #92400e; font-weight: 700; }
+    .cbtn.sel-early    { border-color: #8b5cf6; background: #f5f3ff; color: #4c1d95; font-weight: 700; }
+    .cbtn.sel-home     { border-color: #06b6d4; background: #ecfeff; color: #164e63; font-weight: 700; }
+    .cbtn.sel-other    { border-color: #6b7280; background: #f9fafb; color: #111;    font-weight: 700; }
+
+    /* ── Other text input ── */
+    .other-wrap { display: none; padding: 0 14px 12px; }
+    .other-wrap.open { display: block; }
+    .other-wrap input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      direction: rtl;
+      color: #1a1a2e;
+    }
+    .other-wrap input:focus { outline: none; border-color: #6b7280; }
+
+    /* ── Error ── */
+    .err-msg {
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: 9px;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      margin: 8px 12px 0;
+      display: none;
+    }
+    .err-msg.show { display: block; }
+
+    /* ── Save bar ── */
+    .save-bar {
+      position: fixed;
+      bottom: 0; right: 0; left: 0;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .save-btn {
+      width: 100%;
+      padding: 14px;
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      border-radius: 11px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s;
+    }
+    .save-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    .save-hint { font-size: 0.74rem; color: #9ca3af; text-align: center; }
+
+    /* ── Success ── */
+    .success-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70vh;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .success-screen.show { display: flex; }
+    .success-icon  { font-size: 5rem; margin-bottom: 20px; }
+    .success-title { font-size: 1.5rem; font-weight: 800; color: #065f46; margin-bottom: 10px; }
+    .success-sub   { font-size: 0.9rem; color: #6b7280; line-height: 1.6; }
+    .success-list  { margin-top: 18px; width: 100%; text-align: right; }
+    .success-item  {
+      background: #f0fdf4;
+      border-radius: 9px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      color: #065f46;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Config missing ── */
+    .config-error {
+      padding: 40px 24px;
+      text-align: center;
+      color: #991b1b;
+    }
+    .config-error h2 { font-size: 1.2rem; margin-bottom: 10px; }
+    .config-error p  { font-size: 0.85rem; color: #6b7280; }
+  </style>
+</head>
+<body>
+
+<div id="hdr" class="hdr">
+  <h1 id="hdr-title">אילוצי סידור עבודה</h1>
+  <p  id="hdr-sub">בחר/י שם וסמן/י את הימים הרלוונטיים</p>
+</div>
+
+<div id="name-section" class="name-section">
+  <label>שם מלא</label>
+  <select id="name-sel">
+    <option value="">— בחר/י שם —</option>
+  </select>
+</div>
+
+<div id="summary-bar" class="summary-bar">
+  <span>נבחרו</span>
+  <span id="summary-count" class="summary-count">0</span>
+  <span>אילוצים</span>
+</div>
+
+<div id="err-msg" class="err-msg"></div>
+<div id="days-root"></div>
+<div id="success-screen" class="success-screen"></div>
+
+<div class="save-bar">
+  <button id="save-btn" class="save-btn">שמור אילוצים</button>
+  <div class="save-hint">ניתן לא לסמן כלום — משמעותו זמינות מלאה</div>
+</div>
+
+<script>
+  /* ── Constants ── */
+  const HE_DAYS   = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']
+  const HE_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני',
+                     'יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר']
+
+  const CTYPES = [
+    { id: 'vacation', label: 'חופש',           cls: 'vacation' },
+    { id: 'late',     label: 'מגיע/ה מאוחר',   cls: 'late'     },
+    { id: 'early',    label: 'יוצא/ת מוקדם',   cls: 'early'    },
+    { id: 'home',     label: 'עבודה מהבית',    cls: 'home'     },
+    { id: 'other',    label: 'אחר…',           cls: 'other'    },
+  ]
+
+  /* ── URL params ── */
+  const p       = new URLSearchParams(location.search)
+  const START   = p.get('start')  || ''
+  const END     = p.get('end')    || ''
+  const NAMES   = (p.get('names') || '').split(',').map(s => s.trim()).filter(Boolean)
+  const SCRIPT  = p.get('script') || ''
+  const TITLE   = p.get('title')  || 'סידור עבודה'
+
+  /* ── State ── */
+  // selections[date] = { typeId, note }
+  const sel = {}
+
+  /* ── Helpers ── */
+  function parseLocal(s) {
+    const [y, m, d] = s.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+
+  function fmtDate(s) {
+    const [y, m, d] = s.split('-').map(Number)
+    return `${d} ${HE_MONTHS[m - 1]}`
+  }
+
+  function getDays() {
+    const out = []
+    const cur = parseLocal(START), end = parseLocal(END)
+    while (cur <= end) {
+      const dow = cur.getDay()
+      out.push({
+        date: `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`,
+        dom:  cur.getDate(),
+        mon:  cur.getMonth(),
+        dow,
+        weekend: dow === 5 || dow === 6,
+      })
+      cur.setDate(cur.getDate() + 1)
+    }
+    return out
+  }
+
+  function updateSummary() {
+    const n = Object.keys(sel).length
+    document.getElementById('summary-count').textContent = n
+    const bar = document.getElementById('summary-bar')
+    bar.className = n > 0 ? 'summary-bar visible' : 'summary-bar'
+  }
+
+  /* ── Render ── */
+  function renderDays() {
+    const root = document.getElementById('days-root')
+    root.innerHTML = ''
+    if (!START || !END) return
+
+    const days = getDays()
+    let lastMon = -1
+
+    days.forEach(day => {
+      // Month header
+      if (day.mon !== lastMon && !day.weekend) {
+        lastMon = day.mon
+        const mh = document.createElement('div')
+        mh.className = 'month-hdr'
+        mh.textContent = HE_MONTHS[day.mon]
+        root.appendChild(mh)
+
+        const dl = document.createElement('div')
+        dl.className = 'days-list'
+        dl.id = `month-${day.mon}`
+        root.appendChild(dl)
+      }
+
+      const s      = sel[day.date]
+      const ctype  = s ? CTYPES.find(c => c.id === s.typeId) : null
+
+      const card = document.createElement('div')
+      card.className = [
+        'day-card',
+        day.weekend ? 'weekend' : '',
+        s ? `has-constraint constraint-${ctype?.cls || ''}` : '',
+      ].join(' ')
+
+      /* Header row */
+      const tag = s
+        ? `<span class="day-tag tag-${ctype?.cls}">${s.typeId === 'other' && s.note ? s.note : ctype?.label}</span>`
+        : ''
+
+      card.innerHTML = `
+        <div class="day-header">
+          <span class="day-date">${day.dom}</span>
+          <span class="day-month">${HE_MONTHS[day.mon]}</span>
+          <span class="day-dow">${HE_DAYS[day.dow]}</span>
+          ${tag}
+        </div>
+        ${day.weekend ? '' : `
+          <div class="cbtn-row">
+            ${CTYPES.map(c => `
+              <button class="cbtn ${s?.typeId === c.id ? 'sel-'+c.cls : ''}"
+                      data-date="${day.date}" data-type="${c.id}">
+                ${c.label}
+              </button>`).join('')}
+          </div>
+          <div class="other-wrap ${s?.typeId === 'other' ? 'open' : ''}" id="ow-${day.date}">
+            <input type="text"
+                   placeholder="פרט/י…"
+                   value="${s?.typeId === 'other' ? (s.note || '') : ''}"
+                   data-date="${day.date}" />
+          </div>
+        `}
+      `
+
+      // Attach events
+      card.querySelectorAll('.cbtn').forEach(btn => {
+        btn.addEventListener('click', () => onCBtn(day.date, btn.dataset.type))
+      })
+      const inp = card.querySelector('.other-wrap input')
+      if (inp) {
+        inp.addEventListener('input', () => {
+          if (sel[day.date]?.typeId === 'other') sel[day.date].note = inp.value
+        })
+      }
+
+      const list = document.getElementById(`month-${day.mon}`) || root
+      list.appendChild(card)
+    })
+  }
+
+  function onCBtn(date, typeId) {
+    if (sel[date]?.typeId === typeId) {
+      delete sel[date]
+    } else {
+      sel[date] = { typeId, note: '' }
+    }
+    renderDays()
+    updateSummary()
+    if (sel[date]?.typeId === 'other') {
+      setTimeout(() => {
+        const inp = document.querySelector(`#ow-${date} input`)
+        if (inp) inp.focus()
+      }, 40)
+    }
+  }
+
+  /* ── Save ── */
+  async function onSave() {
+    const name = document.getElementById('name-sel').value
+    const err  = document.getElementById('err-msg')
+    err.className = 'err-msg'
+
+    if (!name) {
+      err.textContent = 'יש לבחור שם לפני השמירה'
+      err.className = 'err-msg show'
+      document.getElementById('name-sel').focus()
+      return
+    }
+
+    // Validate "other" has text
+    for (const [date, s] of Object.entries(sel)) {
+      if (s.typeId === 'other' && !s.note.trim()) {
+        err.textContent = `יש לפרט את האילוץ "אחר" בתאריך ${fmtDate(date)}`
+        err.className = 'err-msg show'
+        document.querySelector(`#ow-${date} input`)?.focus()
+        return
+      }
+    }
+
+    const constraints = Object.entries(sel).sort(([a],[b]) => a.localeCompare(b)).map(([date, s]) => {
+      const ctype = CTYPES.find(c => c.id === s.typeId)
+      return {
+        date,
+        typeId: s.typeId,
+        label:  s.typeId === 'other' ? s.note.trim() : ctype.label,
+      }
+    })
+
+    const payload = { name, start: START, end: END, constraints,
+                      submittedAt: new Date().toISOString() }
+
+    const btn = document.getElementById('save-btn')
+    btn.disabled = true
+    btn.textContent = 'שומר…'
+
+    try {
+      await fetch(SCRIPT, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      })
+      showSuccess(name, constraints)
+    } catch {
+      err.textContent = 'שגיאת רשת — בדוק/י חיבור ונסה/י שוב'
+      err.className = 'err-msg show'
+      btn.disabled = false
+      btn.textContent = 'שמור אילוצים'
+    }
+  }
+
+  function showSuccess(name, constraints) {
+    document.getElementById('name-section').style.display  = 'none'
+    document.getElementById('days-root').style.display     = 'none'
+    document.getElementById('summary-bar').style.display   = 'none'
+    document.getElementById('err-msg').style.display       = 'none'
+    document.querySelector('.save-bar').style.display      = 'none'
+
+    const listHtml = constraints.length === 0
+      ? '<p style="color:#6b7280;font-size:.88rem">לא נרשמו אילוצים — אתה/את זמינ/ה בכל ימי הסידור 🎉</p>'
+      : constraints.map(c =>
+          `<div class="success-item"><span>${fmtDate(c.date)} ${HE_DAYS[parseLocal(c.date).getDay()]}</span><span>${c.label}</span></div>`
+        ).join('')
+
+    const s = document.getElementById('success-screen')
+    s.innerHTML = `
+      <div class="success-icon">✅</div>
+      <div class="success-title">האילוצים נשמרו!</div>
+      <div class="success-sub">${name}, האילוצים שלך נקלטו בהצלחה.<br>מכין הסידור יראה אותם בקרוב.</div>
+      <div class="success-list">${listHtml}</div>
+    `
+    s.className = 'success-screen show'
+  }
+
+  /* ── Init ── */
+  function init() {
+    if (!START || !END || NAMES.length === 0 || !SCRIPT) {
+      document.getElementById('days-root').innerHTML =
+        `<div class="config-error">
+           <h2>קישור לא תקין</h2>
+           <p>יש לפנות למכין הסידור לקבלת קישור מעודכן.</p>
+         </div>`
+      document.getElementById('name-section').style.display = 'none'
+      document.querySelector('.save-bar').style.display     = 'none'
+      return
+    }
+
+    document.getElementById('hdr-title').textContent = TITLE
+    document.getElementById('hdr-sub').textContent   =
+      `${fmtDate(START)} – ${fmtDate(END)} · סמן/י אילוצים לחודש הקרוב`
+
+    const sel_ = document.getElementById('name-sel')
+    NAMES.forEach(n => {
+      const o = document.createElement('option')
+      o.value = o.textContent = n
+      sel_.appendChild(o)
+    })
+
+    renderDays()
+    document.getElementById('save-btn').addEventListener('click', onSave)
+  }
+
+  init()
+</script>
+</body>
+</html>

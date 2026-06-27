@@ -45,7 +45,8 @@ export default function ScheduleListScreen({ onOpen, onSettings }: Props) {
     try {
       debugLog('api available?', typeof window.api)
       const prefix = toCompact(startDate) + '-' + toCompact(endDate)
-      const version = list.filter(s => s.id.startsWith(prefix + '-v')).length + 1
+      const existing = list.filter(s => s.id.startsWith(prefix + '-v'))
+      const version = Math.max(0, ...existing.map(s => s.version)) + 1
       const id = prefix + '-v' + version
       debugLog('creating schedule', { id, startDate, endDate })
 

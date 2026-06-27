@@ -80,6 +80,9 @@ export function useSchedule(id: string | null) {
       }
       setHistoryVersion(v => v + 1)
     })
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    }
   }, [id])
 
   const persist = useCallback((data: ScheduleData) => {

@@ -14,12 +14,15 @@ export default function SettingsScreen({ onDone }: Props) {
   const [prosecutors, setProsecutors] = useState<string[]>([])
   const [judges, setJudges] = useState<string[]>([])
   const [generalOptions, setGeneralOptions] = useState<string[]>([])
+  const [constraintsScriptUrl, setConstraintsScriptUrl] = useState('')
   const [newProsecutor, setNewProsecutor] = useState('')
   const [newJudge, setNewJudge] = useState('')
   const [newOption, setNewOption] = useState('')
   const [saved, setSaved] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
+  const [optDragIdx, setOptDragIdx] = useState<number | null>(null)
+  const [optDragOver, setOptDragOver] = useState<number | null>(null)
 
   useEffect(() => { loadConfig() }, [loadConfig])
 
@@ -30,6 +33,7 @@ export default function SettingsScreen({ onDone }: Props) {
       setProsecutors(config.prosecutors)
       setJudges(config.judges)
       setGeneralOptions(config.generalOptions ?? GENERAL_OPTIONS)
+      setConstraintsScriptUrl(config.constraintsScriptUrl ?? '')
     }
   }, [config])
 
@@ -39,6 +43,7 @@ export default function SettingsScreen({ onDone }: Props) {
     prosecutors,
     judges,
     generalOptions,
+    constraintsScriptUrl: constraintsScriptUrl.trim() || undefined,
   })
 
   const handleSave = async () => {
@@ -147,6 +152,19 @@ export default function SettingsScreen({ onDone }: Props) {
               placeholder="נצרת / עפולה / ..."
             />
           </label>
+          <label>
+            <span>כתובת Google Apps Script (לאילוצים)</span>
+            <input
+              value={constraintsScriptUrl}
+              onChange={e => setConstraintsScriptUrl(e.target.value)}
+              placeholder="https://script.google.com/macros/s/..."
+              dir="ltr"
+              style={{ fontSize: '0.8rem' }}
+            />
+            <span className="hint" style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+              מתקבל לאחר פרסום Google Apps Script כ-Web App
+            </span>
+          </label>
         </section>
 
         {/* Prosecutors */}
@@ -214,16 +232,16 @@ export default function SettingsScreen({ onDone }: Props) {
                 key={i}
                 className="list-item"
                 draggable
-                onDragStart={() => setDragIdx(i)}
-                onDragEnter={() => setDragOver(i)}
+                onDragStart={() => setOptDragIdx(i)}
+                onDragEnter={() => setOptDragOver(i)}
                 onDragEnd={() => {
-                  if (dragIdx !== null && dragOver !== null && dragIdx !== i) {
-                    moveOption(dragIdx, dragOver)
+                  if (optDragIdx !== null && optDragOver !== null && optDragIdx !== optDragOver) {
+                    moveOption(optDragIdx, optDragOver)
                   }
-                  setDragIdx(null); setDragOver(null)
+                  setOptDragIdx(null); setOptDragOver(null)
                 }}
                 onDragOver={e => e.preventDefault()}
-                style={{ opacity: dragIdx === i ? 0.5 : 1 }}
+                style={{ opacity: optDragIdx === i ? 0.5 : 1 }}
               >
                 <span className="drag-handle">⠿</span>
                 <span className="item-name">{opt}</span>
