@@ -22,6 +22,14 @@ function jsonResponse(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// Converts a cell value (possibly a Date object) to "YYYY-MM-DD" string
+function cellToDateStr(cell) {
+  if (cell instanceof Date) {
+    return Utilities.formatDate(cell, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return String(cell).trim();
+}
+
 function writeConstraints(data) {
   var name        = data.name;
   var start       = data.start;
@@ -35,17 +43,30 @@ function writeConstraints(data) {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
     sheet.setFrozenRows(1);
+    sheet.getRange(1, 1).setValue('תאריך');
   }
+
+  // Ensure row 1 is a proper header
+  var r1v = sheet.getRange(1, 1).getValue();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cellToDateStr(r1v))) {
+    // Old structure: A1 has a date — insert header row above
+    sheet.insertRowBefore(1);
+    sheet.setFrozenRows(1);
+  }
+  // Always ensure A1 = 'תאריך' (covers empty/cleared sheets too)
+  sheet.getRange(1, 1).setValue('תאריך');
 
   ensureDates(sheet, start, end);
 
-  var allData  = sheet.getDataRange().getValues();
+  // Re-read after ensureDates
+  var allData   = sheet.getDataRange().getValues();
   var dateToRow = {};
   for (var i = 1; i < allData.length; i++) {
-    var v = String(allData[i][0]).trim();
+    var v = cellToDateStr(allData[i][0]);
     if (v) dateToRow[v] = i + 1;
   }
 
+  // Find or create column for this employee
   var headerRow = allData[0] || [];
   var colIdx = -1;
   for (var h = 0; h < headerRow.length; h++) {
@@ -61,6 +82,7 @@ function writeConstraints(data) {
     hCell.setFontWeight('bold');
   }
 
+  // Clear previous entries for this employee, then write new ones
   var lastRow = sheet.getLastRow();
   if (lastRow > 1) {
     sheet.getRange(2, colIdx + 1, lastRow - 1, 1).clearContent();
@@ -75,14 +97,14 @@ function writeConstraints(data) {
 }
 
 function ensureDates(sheet, start, end) {
-  var tz       = Session.getScriptTimeZone();
+  var tz      = Session.getScriptTimeZone();
   var existing = {};
   var lastRow  = sheet.getLastRow();
 
   if (lastRow > 1) {
     var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
     for (var i = 0; i < colA.length; i++) {
-      var v = String(colA[i][0]).trim();
+      var v = cellToDateStr(colA[i][0]);
       if (v) existing[v] = true;
     }
   }
@@ -99,8 +121,11 @@ function ensureDates(sheet, start, end) {
 
   if (toAdd.length === 0) return;
 
-  var nextRow = sheet.getLastRow() + 1;
-  sheet.getRange(nextRow, 1, toAdd.length, 1).setValues(toAdd);
+  // Dates always start from row 2 (row 1 is the header)
+  var nextRow = Math.max(sheet.getLastRow() + 1, 2);
+  var rng = sheet.getRange(nextRow, 1, toAdd.length, 1);
+  rng.setNumberFormat('@');   // store as plain text, not Date object
+  rng.setValues(toAdd);
 
   var total = sheet.getLastRow();
   if (total > 2) {
