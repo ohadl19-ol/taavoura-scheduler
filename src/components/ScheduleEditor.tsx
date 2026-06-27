@@ -88,7 +88,7 @@ function normalizeDate(raw: string): string | null {
 // ── Link generator ────────────────────────────────────────────────────────────
 
 function buildFormUrl(schedule: ScheduleData, config: AppConfig): string {
-  const base   = 'https://your-username.github.io/taavoura-scheduler/constraints-form/'
+  const base   = 'https://ohadl19-ol.github.io/taavoura-constraints/'
   const params = new URLSearchParams({
     start:  schedule.startDate,
     end:    schedule.endDate,
