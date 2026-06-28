@@ -85,6 +85,16 @@ function normalizeDate(raw: string): string | null {
   return null
 }
 
+// ── Partial constraints — show as tag, don't block the cell ───────────────────
+
+const PARTIAL_CONSTRAINT_TAGS: Record<string, { abbr: string; color: string }> = {
+  'יוצא מוקדם':  { abbr: 'י.מ',  color: 'partial-early-out' },
+  'מגיע מאוחר':  { abbr: 'מ.א',  color: 'partial-late-in'   },
+  'עבודה מהבית': { abbr: 'בית',   color: 'partial-home'      },
+}
+
+const PARTIAL_LABELS = Object.keys(PARTIAL_CONSTRAINT_TAGS)
+
 // ── Link generator ────────────────────────────────────────────────────────────
 
 function buildFormUrl(schedule: ScheduleData, config: AppConfig): string {
@@ -193,19 +203,28 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     const key        = getCellKey(activeCell.dayIdx, activeCell.proIdx)
     const constraint = schedule.constraints?.[key]
     if (!constraint) return
-    const newAssignments  = { ...schedule.assignments, [key]: { category: 'general' as const, label: constraint.label } }
-    const newConstraints  = { ...schedule.constraints, [key]: { ...constraint, status: 'approved' as const } }
-    setSchedule({ ...schedule, assignments: newAssignments, constraints: newConstraints })
+    const newConstraints = { ...schedule.constraints, [key]: { ...constraint, status: 'approved' as const } }
+    if (PARTIAL_LABELS.includes(constraint.label)) {
+      // Partial constraint — store as tag, leave cell assignable
+      const newPartial = { ...(schedule.partialConstraints ?? {}), [key]: constraint.label }
+      setSchedule({ ...schedule, constraints: newConstraints, partialConstraints: newPartial })
+    } else {
+      // Full constraint (חופש / מחלה / אחר) — fill the cell
+      const newAssignments = { ...schedule.assignments, [key]: { category: 'general' as const, label: constraint.label } }
+      setSchedule({ ...schedule, assignments: newAssignments, constraints: newConstraints })
+    }
     setActiveCell(null)
   }, [schedule, activeCell, setSchedule])
 
   // ── Reject constraint ──────────────────────────────────────────────────────
   const handleReject = useCallback(() => {
     if (!schedule || !activeCell) return
-    const key           = getCellKey(activeCell.dayIdx, activeCell.proIdx)
+    const key            = getCellKey(activeCell.dayIdx, activeCell.proIdx)
     const newConstraints = { ...schedule.constraints }
     delete newConstraints[key]
-    setSchedule({ ...schedule, constraints: newConstraints })
+    const newPartial     = { ...(schedule.partialConstraints ?? {}) }
+    delete newPartial[key]
+    setSchedule({ ...schedule, constraints: newConstraints, partialConstraints: newPartial })
     setActiveCell(null)
   }, [schedule, activeCell, setSchedule])
 
@@ -344,6 +363,15 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
         </div>
       )}
 
+      <div className="partial-legend">
+        <span className="legend-title">מקרא:</span>
+        {Object.entries(PARTIAL_CONSTRAINT_TAGS).map(([label, { abbr, color }]) => (
+          <span key={label} className={`legend-item partial-tag ${color}`}>
+            {abbr} = {label}
+          </span>
+        ))}
+      </div>
+
       <div className="table-wrapper">
         <table className="schedule-table">
           <thead>
@@ -395,11 +423,14 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                     )}
                   </td>
                   {config.prosecutors.map((_, proIdx) => {
-                    const val        = getCell(dayIdx, proIdx)
-                    const constraint = getConstraint(dayIdx, proIdx)
-                    const isActive   = activeCell?.dayIdx === dayIdx && activeCell?.proIdx === proIdx
-                    const cellId     = `cell-${dayIdx}-${proIdx}`
-                    const hasPending = constraint?.status === 'pending'
+                    const key            = getCellKey(dayIdx, proIdx)
+                    const val            = getCell(dayIdx, proIdx)
+                    const constraint     = getConstraint(dayIdx, proIdx)
+                    const partialLabel   = schedule?.partialConstraints?.[key]
+                    const partialTag     = partialLabel ? PARTIAL_CONSTRAINT_TAGS[partialLabel] : null
+                    const isActive       = activeCell?.dayIdx === dayIdx && activeCell?.proIdx === proIdx
+                    const cellId         = `cell-${dayIdx}-${proIdx}`
+                    const hasPending     = constraint?.status === 'pending'
                     return (
                       <td
                         key={proIdx}
@@ -413,6 +444,11 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                         ].join(' ')}
                         onClick={e => handleCellClick(dayIdx, proIdx, e.currentTarget as HTMLElement)}
                       >
+                        {partialTag && (
+                          <span className={`partial-tag partial-tag-cell ${partialTag.color}`} title={partialLabel}>
+                            {partialTag.abbr}
+                          </span>
+                        )}
                         {val && (
                           <span className={`cell-text ${day.isWeekend && val.label === 'ת. עצורים' ? 'cell-text-weekend-detention' : ''}`}>
                             {val.label}

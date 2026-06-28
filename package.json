@@ -37,7 +37,7 @@
   },
   "build": {
     "appId": "il.police.taavoura.scheduler",
-    "productName": "סידור עבודה - תעבורה",
+    "productName": "סידור עבודה חטיבת התביעות",
     "directories": {
       "output": "release"
     },
@@ -48,7 +48,8 @@
       "target": "nsis"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "resources/icon.icns"
     },
     "nsis": {
       "oneClick": false,

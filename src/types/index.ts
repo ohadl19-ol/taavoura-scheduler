@@ -35,6 +35,7 @@ export interface ScheduleData {
   version: number
   assignments: Assignments
   constraints?: Constraints  // imported from Google Sheets CSV
+  partialConstraints?: Record<string, string>  // cell key → label (יוצא מוקדם / מגיע מאוחר / עבודה מהבית)
   createdAt: string
   updatedAt: string
 }
