@@ -149,6 +149,11 @@ export function generateHTML(schedule: ScheduleData, config: AppConfig): string 
 body{font-family:-apple-system,Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;padding-bottom:40px}
 a{text-decoration:none;color:inherit}
 
+/* ── home screen tip bar ── */
+.home-tip{display:flex;align-items:center;justify-content:space-between;background:#1e3a5f;border-bottom:2px solid #f0c040;padding:10px 14px;gap:10px}
+.home-tip-text{color:#fff;font-size:.78rem;line-height:1.5;flex:1}
+.home-tip-close{background:none;border:none;color:#8892b0;font-size:1rem;cursor:pointer;padding:0 4px;flex-shrink:0}
+
 /* ── top section (nav + full table) ── */
 #top{background:#1a1a2e;padding:16px 16px 20px}
 .hdr{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
@@ -239,6 +244,10 @@ a{text-decoration:none;color:inherit}
 
     // ── id="top" = navigation + full table ──
     + '<div id="top">\n'
+    + '  <div class="home-tip" id="home-tip">'
+    + '<span class="home-tip-text">💡 <strong>שמור על מסך הבית:</strong> iOS — לחץ שתף ← "הוסף למסך הבית" | Android — תפריט ← "הוסף למסך הבית"</span>'
+    + '<button onclick="document.getElementById(\'home-tip\').style.display=\'none\'" class="home-tip-close">✕</button>'
+    + '</div>\n'
     + '  <div class="hdr">\n'
     + '    <div><div class="htitle">📋 סידור ' + esc(range) + '</div>'
     + '<div class="hmeta">' + ver + ' · ' + esc(config.unit_name) + '</div></div>\n'
