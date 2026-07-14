@@ -15,6 +15,11 @@ export default function SettingsScreen({ onDone }: Props) {
   const [judges, setJudges] = useState<string[]>([])
   const [generalOptions, setGeneralOptions] = useState<string[]>([])
   const [constraintsScriptUrl, setConstraintsScriptUrl] = useState('')
+  const [driveClientId, setDriveClientId]         = useState('')
+  const [driveClientSecret, setDriveClientSecret] = useState('')
+  const [driveStatus, setDriveStatus]             = useState<boolean | null>(null)
+  const [driveConnecting, setDriveConnecting]     = useState(false)
+  const [driveError, setDriveError]               = useState<string | null>(null)
   const [newProsecutor, setNewProsecutor] = useState('')
   const [newJudge, setNewJudge] = useState('')
   const [newOption, setNewOption] = useState('')
@@ -34,7 +39,10 @@ export default function SettingsScreen({ onDone }: Props) {
       setJudges(config.judges)
       setGeneralOptions(config.generalOptions ?? GENERAL_OPTIONS)
       setConstraintsScriptUrl(config.constraintsScriptUrl ?? '')
+      setDriveClientId(config.driveClientId ?? '')
+      setDriveClientSecret(config.driveClientSecret ?? '')
     }
+    window.api.drive.status().then(setDriveStatus)
   }, [config])
 
   const currentData = (): AppConfig => ({
@@ -43,8 +51,32 @@ export default function SettingsScreen({ onDone }: Props) {
     prosecutors,
     judges,
     generalOptions,
-    constraintsScriptUrl: constraintsScriptUrl.trim() || undefined,
+    constraintsScriptUrl:  constraintsScriptUrl.trim()  || undefined,
+    driveClientId:         driveClientId.trim()         || undefined,
+    driveClientSecret:     driveClientSecret.trim()     || undefined,
   })
+
+  const handleDriveConnect = async () => {
+    const id  = driveClientId.trim()
+    const sec = driveClientSecret.trim()
+    if (!id || !sec) { setDriveError('יש להזין Client ID ו-Client Secret לפני החיבור'); return }
+    setDriveError(null)
+    setDriveConnecting(true)
+    try {
+      await saveConfig(currentData())
+      await window.api.drive.authorize(id, sec)
+      setDriveStatus(true)
+    } catch (e) {
+      setDriveError(e instanceof Error ? e.message : 'שגיאה בחיבור')
+    } finally {
+      setDriveConnecting(false)
+    }
+  }
+
+  const handleDriveLogout = async () => {
+    await window.api.drive.logout()
+    setDriveStatus(false)
+  }
 
   const handleSave = async () => {
     await saveConfig(currentData())
@@ -220,6 +252,67 @@ export default function SettingsScreen({ onDone }: Props) {
               <button className="btn btn-add" onClick={addJudge}>הוסף</button>
             </div>
           </div>
+        </section>
+
+        {/* Google Drive */}
+        <section className="settings-card">
+          <h2>☁️ Google Drive — שיתוף סידור</h2>
+          <p className="hint">
+            העלאה אוטומטית של הסידור ל-Drive ויצירת קישור שאפשר לשלוח לעובדים.{' '}
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              onClick={e => { e.preventDefault(); window.open('https://console.cloud.google.com/apis/credentials') }}
+              style={{ color: '#6366f1' }}
+            >
+              כיצד ליצור אישורים ›
+            </a>
+          </p>
+
+          <label>
+            <span>Client ID</span>
+            <input
+              value={driveClientId}
+              onChange={e => setDriveClientId(e.target.value)}
+              placeholder="XXXX.apps.googleusercontent.com"
+              dir="ltr"
+              style={{ fontSize: '0.8rem' }}
+            />
+          </label>
+          <label>
+            <span>Client Secret</span>
+            <input
+              value={driveClientSecret}
+              onChange={e => setDriveClientSecret(e.target.value)}
+              placeholder="GOCSPX-..."
+              dir="ltr"
+              style={{ fontSize: '0.8rem' }}
+              type="password"
+            />
+          </label>
+
+          {driveError && (
+            <div style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: 4 }}>⚠️ {driveError}</div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+            {driveStatus === true ? (
+              <>
+                <span style={{ color: '#059669', fontWeight: 600, fontSize: '0.85rem' }}>✓ מחובר ל-Google Drive</span>
+                <button className="btn btn-danger btn-sm" onClick={handleDriveLogout}>נתק</button>
+              </>
+            ) : (
+              <button
+                className="btn btn-primary"
+                onClick={handleDriveConnect}
+                disabled={driveConnecting}
+              >
+                {driveConnecting ? 'מחבר…' : '🔗 התחבר ל-Google Drive'}
+              </button>
+            )}
+          </div>
+          <p className="hint" style={{ marginTop: 8 }}>
+            לאחר החיבור, כפתור ☁️ Drive יופיע בסידור — לחיצה תעלה את הסידור ותעתיק את הקישור.
+          </p>
         </section>
 
         {/* General options */}

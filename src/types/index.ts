@@ -5,6 +5,8 @@ export interface AppConfig {
   judges: string[]
   generalOptions?: string[]   // if absent, falls back to GENERAL_OPTIONS constant
   constraintsScriptUrl?: string  // Google Apps Script web app URL
+  driveClientId?: string
+  driveClientSecret?: string
 }
 
 export type CellCategory = 'judge' | 'supervisor' | 'general'
@@ -66,6 +68,12 @@ declare global {
       export: {
         html(filename: string, html: string): Promise<boolean>
         pdf(filename: string, html: string): Promise<boolean>
+      }
+      drive: {
+        status(): Promise<boolean>
+        authorize(clientId: string, clientSecret: string): Promise<void>
+        logout(): Promise<void>
+        upload(clientId: string, clientSecret: string, filename: string, html: string): Promise<string>
       }
     }
   }

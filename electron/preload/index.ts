@@ -17,4 +17,11 @@ contextBridge.exposeInMainWorld('api', {
     html: (filename: string, html: string) => ipcRenderer.invoke('export:html', filename, html),
     pdf:  (filename: string, html: string) => ipcRenderer.invoke('export:pdf',  filename, html),
   },
+  drive: {
+    status:    ()                                                          => ipcRenderer.invoke('drive:status'),
+    authorize: (clientId: string, clientSecret: string)                    => ipcRenderer.invoke('drive:authorize', clientId, clientSecret),
+    logout:    ()                                                          => ipcRenderer.invoke('drive:logout'),
+    upload:    (clientId: string, clientSecret: string, filename: string, html: string) =>
+                                                                              ipcRenderer.invoke('drive:upload', clientId, clientSecret, filename, html),
+  },
 })

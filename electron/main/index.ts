@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, clipboard } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'fs'
+import { driveService } from './driveService'
 
 const isDev = process.env['NODE_ENV'] === 'development'
 
@@ -134,6 +135,22 @@ ipcMain.handle('export:html', async (_e, filename: string, html: string) => {
   writeFileSync(filePath, html, 'utf-8')
   shell.openPath(filePath)
   return true
+})
+
+// ── IPC: Google Drive ─────────────────────────────────────────────────────────
+
+ipcMain.handle('drive:status', () => driveService.isAuthenticated())
+
+ipcMain.handle('drive:authorize', async (_e, clientId: string, clientSecret: string) => {
+  await driveService.authorize({ clientId, clientSecret })
+})
+
+ipcMain.handle('drive:logout', () => driveService.logout())
+
+ipcMain.handle('drive:upload', async (_e, clientId: string, clientSecret: string, filename: string, html: string) => {
+  const link = await driveService.upload({ clientId, clientSecret }, filename, html)
+  clipboard.writeText(link)
+  return link
 })
 
 // ── IPC: PDF Export ───────────────────────────────────────────────────────────
