@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('api', {
     html: (filename: string, html: string) => ipcRenderer.invoke('export:html', filename, html),
     pdf:  (filename: string, html: string) => ipcRenderer.invoke('export:pdf',  filename, html),
   },
+  pages: {
+    publish: (token: string, html: string) => ipcRenderer.invoke('pages:publish', token, html),
+  },
   drive: {
     status:    ()                                                          => ipcRenderer.invoke('drive:status'),
     authorize: (clientId: string, clientSecret: string)                    => ipcRenderer.invoke('drive:authorize', clientId, clientSecret),

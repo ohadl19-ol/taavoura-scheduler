@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell, clipboard } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'fs'
 import { driveService } from './driveService'
+import { publishToPages } from './githubPages'
 
 const isDev = process.env['NODE_ENV'] === 'development'
 
@@ -135,6 +136,14 @@ ipcMain.handle('export:html', async (_e, filename: string, html: string) => {
   writeFileSync(filePath, html, 'utf-8')
   shell.openPath(filePath)
   return true
+})
+
+// ── IPC: GitHub Pages ────────────────────────────────────────────────────────
+
+ipcMain.handle('pages:publish', async (_e, token: string, html: string) => {
+  const link = await publishToPages(token, html)
+  clipboard.writeText(link)
+  return link
 })
 
 // ── IPC: Google Drive ─────────────────────────────────────────────────────────

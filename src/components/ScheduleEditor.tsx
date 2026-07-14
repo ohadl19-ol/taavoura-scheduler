@@ -117,8 +117,10 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
   const [fillColumnIdx, setFillColumnIdx] = useState<number | null>(null)
   const [exporting, setExporting]         = useState(false)
   const [exportingPdf, setExportingPdf]   = useState(false)
-  const [driveUploading, setDriveUploading] = useState(false)
-  const [driveLink, setDriveLink]           = useState<string | null>(null)
+  const [driveUploading, setDriveUploading]   = useState(false)
+  const [driveLink, setDriveLink]             = useState<string | null>(null)
+  const [pagesPublishing, setPagesPublishing] = useState(false)
+  const [pagesLink, setPagesLink]             = useState<string | null>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [importError, setImportError]     = useState<string | null>(null)
   const cellRef     = useRef<HTMLElement | null>(null)
@@ -298,6 +300,21 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     } finally { setExportingPdf(false) }
   }
 
+  const handlePagesPublish = async () => {
+    if (!schedule || !config.githubToken) return
+    setPagesPublishing(true)
+    setPagesLink(null)
+    try {
+      const html = generateHTML(schedule, config)
+      const link = await window.api.pages.publish(config.githubToken, html)
+      setPagesLink(link)
+    } catch (e) {
+      alert('שגיאה בפרסום: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setPagesPublishing(false)
+    }
+  }
+
   const handleDriveUpload = async () => {
     if (!schedule || !config.driveClientId || !config.driveClientSecret) return
     setDriveUploading(true)
@@ -359,6 +376,11 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
             🔗 קישור לעובדים
           </button>
 
+          {config.githubToken && (
+            <button className="btn btn-drive" onClick={handlePagesPublish} disabled={pagesPublishing}>
+              {pagesPublishing ? 'מפרסם…' : '🌐 פרסם'}
+            </button>
+          )}
           {config.driveClientId && config.driveClientSecret && (
             <button className="btn btn-drive" onClick={handleDriveUpload} disabled={driveUploading}>
               {driveUploading ? 'מעלה…' : '☁️ Drive'}
@@ -372,6 +394,16 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
           </button>
         </div>
       </div>
+
+      {pagesLink && (
+        <div className="drive-success-bar">
+          ✓ פורסם! הקישור הועתק ללוח:{' '}
+          <a href="#" onClick={e => { e.preventDefault(); window.open(pagesLink) }} style={{ color: '#1d4ed8', fontWeight: 600 }}>
+            {pagesLink}
+          </a>
+          <button onClick={() => setPagesLink(null)}>✕</button>
+        </div>
+      )}
 
       {driveLink && (
         <div className="drive-success-bar">

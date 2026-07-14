@@ -7,6 +7,7 @@ export interface AppConfig {
   constraintsScriptUrl?: string  // Google Apps Script web app URL
   driveClientId?: string
   driveClientSecret?: string
+  githubToken?: string
 }
 
 export type CellCategory = 'judge' | 'supervisor' | 'general'
@@ -68,6 +69,9 @@ declare global {
       export: {
         html(filename: string, html: string): Promise<boolean>
         pdf(filename: string, html: string): Promise<boolean>
+      }
+      pages: {
+        publish(token: string, html: string): Promise<string>
       }
       drive: {
         status(): Promise<boolean>

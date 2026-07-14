@@ -15,6 +15,7 @@ export default function SettingsScreen({ onDone }: Props) {
   const [judges, setJudges] = useState<string[]>([])
   const [generalOptions, setGeneralOptions] = useState<string[]>([])
   const [constraintsScriptUrl, setConstraintsScriptUrl] = useState('')
+  const [githubToken, setGithubToken]             = useState('')
   const [driveClientId, setDriveClientId]         = useState('')
   const [driveClientSecret, setDriveClientSecret] = useState('')
   const [driveStatus, setDriveStatus]             = useState<boolean | null>(null)
@@ -39,6 +40,7 @@ export default function SettingsScreen({ onDone }: Props) {
       setJudges(config.judges)
       setGeneralOptions(config.generalOptions ?? GENERAL_OPTIONS)
       setConstraintsScriptUrl(config.constraintsScriptUrl ?? '')
+      setGithubToken(config.githubToken ?? '')
       setDriveClientId(config.driveClientId ?? '')
       setDriveClientSecret(config.driveClientSecret ?? '')
     }
@@ -52,6 +54,7 @@ export default function SettingsScreen({ onDone }: Props) {
     judges,
     generalOptions,
     constraintsScriptUrl:  constraintsScriptUrl.trim()  || undefined,
+    githubToken:           githubToken.trim()           || undefined,
     driveClientId:         driveClientId.trim()         || undefined,
     driveClientSecret:     driveClientSecret.trim()     || undefined,
   })
@@ -252,6 +255,29 @@ export default function SettingsScreen({ onDone }: Props) {
               <button className="btn btn-add" onClick={addJudge}>הוסף</button>
             </div>
           </div>
+        </section>
+
+        {/* GitHub Pages */}
+        <section className="settings-card">
+          <h2>🌐 GitHub Pages — שיתוף סידור</h2>
+          <p className="hint">
+            מפרסם את הסידור כדף אינטרנט אמיתי שניתן לשמור במסך הבית של הטלפון.{' '}
+            הקישור הקבוע: <strong>ohadl19-ol.github.io/taavoura-scheduler</strong>
+          </p>
+          <label>
+            <span>GitHub Token</span>
+            <input
+              value={githubToken}
+              onChange={e => setGithubToken(e.target.value)}
+              placeholder="ghp_..."
+              dir="ltr"
+              style={{ fontSize: '0.8rem' }}
+              type="password"
+            />
+          </label>
+          <p className="hint" style={{ marginTop: 4 }}>
+            צור Token ב-GitHub: Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → בחר scope: <strong>repo</strong>
+          </p>
         </section>
 
         {/* Google Drive */}
