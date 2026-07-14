@@ -24,6 +24,30 @@ function classify(text: string, judges: string[]): Cls {
   return { type: 'mishrad', badge: 'badge-mishrad', label: text }
 }
 
+function passwordScript(password: string): string {
+  const encoded = btoa(unescape(encodeURIComponent(password)))
+  return `<script>(function(){
+var s='${encoded}',k='sidur_auth_'+s.slice(0,8);
+if(localStorage.getItem(k)===s)return;
+var o=document.createElement('div');
+o.style.cssText='position:fixed;inset:0;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;font-family:Arial,sans-serif';
+o.innerHTML='<h2 style="color:#fff;margin:0">🔒 סידור עבודה</h2>'
++'<p style="color:#8892b0;font-size:.9rem;margin:0">הכנס סיסמה לצפייה בסידור</p>'
++'<input id="pi" type="password" placeholder="סיסמה" style="padding:10px 16px;border-radius:8px;border:2px solid #4f46e5;font-size:1rem;text-align:center;width:200px;outline:none" dir="ltr">'
++'<button id="pb" style="background:#6366f1;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:700">כניסה ›</button>'
++'<div id="pe" style="color:#ef4444;font-size:.85rem;min-height:1.2em"></div>';
+document.body.prepend(o);
+function chk(){
+  var v=document.getElementById('pi').value;
+  if(btoa(unescape(encodeURIComponent(v)))===s){localStorage.setItem(k,s);o.remove();}
+  else{document.getElementById('pe').textContent='סיסמה שגויה';document.getElementById('pi').value='';document.getElementById('pi').focus();}
+}
+document.getElementById('pb').addEventListener('click',chk);
+document.getElementById('pi').addEventListener('keydown',function(e){if(e.key==='Enter')chk();});
+setTimeout(function(){document.getElementById('pi').focus();},100);
+})()</\script>`
+}
+
 export function generateHTML(schedule: ScheduleData, config: AppConfig): string {
   const days  = getDaysForSchedule(schedule.startDate, schedule.endDate)
   const range = rangeLabel(schedule.startDate, schedule.endDate)
@@ -239,6 +263,7 @@ a{text-decoration:none;color:inherit}
     + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
     + '<title>סידור ' + esc(range) + '</title>\n'
     + '<style>\n' + css + '\n</style>\n'
+    + (config.schedulePassword ? passwordScript(config.schedulePassword) + '\n' : '')
     + '</head>\n'
     + '<body>\n'
 

@@ -8,6 +8,7 @@ export interface AppConfig {
   driveClientId?: string
   driveClientSecret?: string
   githubToken?: string
+  schedulePassword?: string
 }
 
 export type CellCategory = 'judge' | 'supervisor' | 'general'

@@ -15,6 +15,7 @@ export default function SettingsScreen({ onDone }: Props) {
   const [judges, setJudges] = useState<string[]>([])
   const [generalOptions, setGeneralOptions] = useState<string[]>([])
   const [constraintsScriptUrl, setConstraintsScriptUrl] = useState('')
+  const [schedulePassword, setSchedulePassword]   = useState('')
   const [githubToken, setGithubToken]             = useState('')
   const [driveClientId, setDriveClientId]         = useState('')
   const [driveClientSecret, setDriveClientSecret] = useState('')
@@ -40,6 +41,7 @@ export default function SettingsScreen({ onDone }: Props) {
       setJudges(config.judges)
       setGeneralOptions(config.generalOptions ?? GENERAL_OPTIONS)
       setConstraintsScriptUrl(config.constraintsScriptUrl ?? '')
+      setSchedulePassword(config.schedulePassword ?? '')
       setGithubToken(config.githubToken ?? '')
       setDriveClientId(config.driveClientId ?? '')
       setDriveClientSecret(config.driveClientSecret ?? '')
@@ -54,6 +56,7 @@ export default function SettingsScreen({ onDone }: Props) {
     judges,
     generalOptions,
     constraintsScriptUrl:  constraintsScriptUrl.trim()  || undefined,
+    schedulePassword:      schedulePassword.trim()      || undefined,
     githubToken:           githubToken.trim()           || undefined,
     driveClientId:         driveClientId.trim()         || undefined,
     driveClientSecret:     driveClientSecret.trim()     || undefined,
@@ -255,6 +258,21 @@ export default function SettingsScreen({ onDone }: Props) {
               <button className="btn btn-add" onClick={addJudge}>הוסף</button>
             </div>
           </div>
+        </section>
+
+        {/* Password */}
+        <section className="settings-card">
+          <h2>🔒 סיסמה לסידור</h2>
+          <p className="hint">אם מוגדרת, כל מי שפותח את הסידור יצטרך להזין אותה — פעם אחת בכל מכשיר.</p>
+          <label>
+            <span>סיסמה</span>
+            <input
+              value={schedulePassword}
+              onChange={e => setSchedulePassword(e.target.value)}
+              placeholder="השאר ריק = ללא סיסמה"
+              type="text"
+            />
+          </label>
         </section>
 
         {/* GitHub Pages */}
