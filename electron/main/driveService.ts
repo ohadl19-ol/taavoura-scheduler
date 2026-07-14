@@ -17,10 +17,13 @@ interface Tokens {
 
 export class DriveService {
   private tokens: Tokens | null = null
+  private fileId: string | null = null
   private readonly tokensPath: string
+  private readonly fileIdPath: string
 
   constructor() {
     this.tokensPath = join(app.getPath('userData'), 'drive-tokens.json')
+    this.fileIdPath = join(app.getPath('userData'), 'drive-file-id.json')
     this.load()
   }
 
@@ -29,10 +32,18 @@ export class DriveService {
       try { this.tokens = JSON.parse(readFileSync(this.tokensPath, 'utf-8')) }
       catch { this.tokens = null }
     }
+    if (existsSync(this.fileIdPath)) {
+      try { this.fileId = JSON.parse(readFileSync(this.fileIdPath, 'utf-8')).fileId ?? null }
+      catch { this.fileId = null }
+    }
   }
 
-  private save() {
+  private saveTokens() {
     if (this.tokens) writeFileSync(this.tokensPath, JSON.stringify(this.tokens), 'utf-8')
+  }
+
+  private saveFileId() {
+    writeFileSync(this.fileIdPath, JSON.stringify({ fileId: this.fileId }), 'utf-8')
   }
 
   isAuthenticated(): boolean {
@@ -41,7 +52,9 @@ export class DriveService {
 
   logout() {
     this.tokens = null
+    this.fileId = null
     if (existsSync(this.tokensPath)) unlinkSync(this.tokensPath)
+    if (existsSync(this.fileIdPath)) unlinkSync(this.fileIdPath)
   }
 
   async authorize(cfg: DriveConfig): Promise<void> {
@@ -122,7 +135,7 @@ export class DriveService {
       refresh_token: data.refresh_token,
       expiry_date:   Date.now() + data.expires_in * 1000,
     }
-    this.save()
+    this.saveTokens()
   }
 
   private async getAccessToken(cfg: DriveConfig): Promise<string> {
@@ -149,7 +162,7 @@ export class DriveService {
     const data = await resp.json() as { access_token: string; expires_in: number }
     this.tokens.access_token = data.access_token
     this.tokens.expiry_date  = Date.now() + data.expires_in * 1000
-    this.save()
+    this.saveTokens()
     return this.tokens.access_token
   }
 
@@ -169,44 +182,66 @@ export class DriveService {
       `--${boundary}--`,
     ].join('\r\n')
 
-    const uploadResp = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-      {
-        method:  'POST',
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          'Content-Type': `multipart/related; boundary="${boundary}"`,
-        },
-        body,
-      }
-    )
+    let fileId = this.fileId
 
-    if (!uploadResp.ok) {
-      const text = await uploadResp.text()
-      throw new Error(`Drive upload failed: ${text}`)
+    if (fileId) {
+      // Update existing file content (keeps the same link)
+      const updateResp = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+        {
+          method:  'PATCH',
+          headers: {
+            Authorization:  `Bearer ${token}`,
+            'Content-Type': `multipart/related; boundary="${boundary}"`,
+          },
+          body,
+        }
+      )
+      if (!updateResp.ok) {
+        // File may have been deleted from Drive — fall through to create new
+        fileId = null
+      }
     }
 
-    const file = await uploadResp.json() as { id: string }
-
-    // Make publicly readable
-    const permResp = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${file.id}/permissions`,
-      {
-        method:  'POST',
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    if (!fileId) {
+      // Create new file
+      const createResp = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        {
+          method:  'POST',
+          headers: {
+            Authorization:  `Bearer ${token}`,
+            'Content-Type': `multipart/related; boundary="${boundary}"`,
+          },
+          body,
+        }
+      )
+      if (!createResp.ok) {
+        throw new Error(`Drive upload failed: ${await createResp.text()}`)
       }
-    )
+      const file = await createResp.json() as { id: string }
+      fileId = file.id
+      this.fileId = fileId
+      this.saveFileId()
 
-    if (!permResp.ok) {
-      const text = await permResp.text()
-      throw new Error(`Failed to set permissions: ${text}`)
+      // Set public sharing only once on creation
+      const permResp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+        {
+          method:  'POST',
+          headers: {
+            Authorization:  `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+        }
+      )
+      if (!permResp.ok) {
+        throw new Error(`Failed to set permissions: ${await permResp.text()}`)
+      }
     }
 
-    return `https://drive.google.com/file/d/${file.id}/view`
+    return `https://drive.google.com/file/d/${fileId}/view`
   }
 }
 
