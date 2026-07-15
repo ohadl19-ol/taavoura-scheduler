@@ -201,6 +201,16 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     }
   }, [schedule, activeCell, config.prosecutors.length, setSchedule])
 
+  // ── Sub-note ───────────────────────────────────────────────────────────────
+  const handleSubNote = useCallback((note: string) => {
+    if (!schedule || !activeCell) return
+    const key = getCellKey(activeCell.dayIdx, activeCell.proIdx)
+    const val = schedule.assignments[key]
+    if (!val) return
+    const updated = note ? { ...val, subNote: note } : { ...val, subNote: undefined }
+    setSchedule({ ...schedule, assignments: { ...schedule.assignments, [key]: updated } })
+  }, [schedule, activeCell, setSchedule])
+
   // ── Approve constraint ─────────────────────────────────────────────────────
   const handleApprove = useCallback(() => {
     if (!schedule || !activeCell) return
@@ -515,9 +525,14 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                           </span>
                         )}
                         {val && (
-                          <span className={`cell-text ${day.isWeekend && val.label === 'ת. עצורים' ? 'cell-text-weekend-detention' : ''}`}>
-                            {val.label}
-                          </span>
+                          <>
+                            <span className={`cell-text ${day.isWeekend && val.label === 'ת. עצורים' ? 'cell-text-weekend-detention' : ''}`}>
+                              {val.label}
+                            </span>
+                            {val.subNote && (
+                              <span className="cell-subnote">{val.subNote}</span>
+                            )}
+                          </>
                         )}
                         {constraint && (
                           <span className={`cell-constraint-tag constraint-${constraint.status}`}>
@@ -539,6 +554,7 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
           config={config}
           current={getCell(activeCell.dayIdx, activeCell.proIdx)}
           onSelect={handleSelect}
+          onSubNote={handleSubNote}
           onClose={() => setActiveCell(null)}
           anchorRef={cellRef as React.RefObject<HTMLElement | null>}
           isWeekend={days[activeCell.dayIdx].isWeekend}

@@ -17,6 +17,7 @@ export interface CellValue {
   category: CellCategory
   label: string        // display text
   judgeKey?: string    // if category==='judge', the judge's name
+  subNote?: string     // optional secondary note (e.g. "תיק מוצמד", "שופט X")
 }
 
 // key: "dayIndex-prosecutorIndex" (0-based)

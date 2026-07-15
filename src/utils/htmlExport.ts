@@ -62,6 +62,10 @@ export function generateHTML(schedule: ScheduleData, config: AppConfig): string 
     return v ? v.label : ''
   }
 
+  function getSub(di: number, pi: number): string {
+    return schedule.assignments[`${di}-${pi}`]?.subNote ?? ''
+  }
+
   function dayDateHtml(day: { dayOfWeek: number; dayOfMonth: number }): string {
     return (
       '<div class="dd"><div class="dow">' + HE_DOW_NAMES[day.dayOfWeek] + '</div>'
@@ -93,9 +97,12 @@ export function generateHTML(schedule: ScheduleData, config: AppConfig): string 
         )
       } else {
         const badge = cls.badge ? '<span class="badge ' + cls.badge + '">' + esc(cls.label) + '</span>' : ''
+        const sub   = getSub(di, pi)
         cards.push(
           '<div class="dc type-' + cls.type + '">' + dayDateHtml(day)
-          + '<div class="dc-body"><div class="asgn">' + (a ? esc(a) : '—') + '</div>' + badge + '</div></div>'
+          + '<div class="dc-body"><div class="asgn">' + (a ? esc(a) : '—') + '</div>'
+          + (sub ? '<div class="asgn-sub">' + esc(sub) + '</div>' : '')
+          + badge + '</div></div>'
         )
       }
     })
@@ -157,8 +164,12 @@ export function generateHTML(schedule: ScheduleData, config: AppConfig): string 
     const isWE = day.isWeekend
     const tds  = config.prosecutors.map((_, pi) => {
       const a   = getA(di, pi)
+      const sub = getSub(di, pi)
       const cls = classify(a, config.judges)
-      return '<td class="' + (isWE ? 'td-we' : 'td-' + cls.type) + '">' + (a ? esc(a) : '') + '</td>'
+      return '<td class="' + (isWE ? 'td-we' : 'td-' + cls.type) + '">'
+        + (a ? esc(a) : '')
+        + (sub ? '<div class="td-sub">' + esc(sub) + '</div>' : '')
+        + '</td>'
     }).join('')
     return (
       '<tr class="' + (isWE ? 'tr-we' : '') + '">'
@@ -240,6 +251,8 @@ a{text-decoration:none;color:inherit}
 .ds{width:1px;height:30px;background:#f3f4f6;flex-shrink:0}
 .dc-body{flex:1;min-width:0}
 .asgn{font-size:.93rem;font-weight:700}
+.asgn-sub{font-size:.72rem;color:#6b7280;margin-top:2px}
+.td-sub{font-size:.68rem;color:#6b7280;margin-top:1px}
 .dim{font-size:.85rem;color:#9ca3af}
 .badge{font-size:.62rem;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-top:3px;white-space:nowrap}
 .badge-mishrad{background:#ede9fe;color:#5b21b6}

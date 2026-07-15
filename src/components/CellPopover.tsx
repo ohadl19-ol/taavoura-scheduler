@@ -10,6 +10,7 @@ interface Props {
   config: AppConfig
   current: CellValue | null
   onSelect: (val: CellValue | null) => void
+  onSubNote?: (note: string) => void  // עדכון הערה נוספת בלי לשנות ההצבה הראשית
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
   isWeekend?: boolean
@@ -20,12 +21,13 @@ interface Props {
 }
 
 export default function CellPopover({
-  config, current, onSelect, onClose, anchorRef,
+  config, current, onSelect, onSubNote, onClose, anchorRef,
   isWeekend, fillMode,
   constraint, onApprove, onReject,
 }: Props) {
   const popRef    = useRef<HTMLDivElement>(null)
   const customRef = useRef<HTMLInputElement>(null)
+  const subNoteRef = useRef<HTMLInputElement>(null)
 
   // Position relative to anchor
   useEffect(() => {
@@ -193,6 +195,26 @@ export default function CellPopover({
           }}
         />
       </div>
+
+      {/* Sub-note (only when cell has a value) */}
+      {current && (
+        <div className="popover-section popover-subnote-section">
+          <div className="popover-section-title" style={{ fontSize: '0.72rem', color: '#6b7280' }}>📎 הערה נוספת לתא</div>
+          <input
+            ref={subNoteRef}
+            className="custom-input"
+            placeholder="תיק מוצמד / שופט נוסף…"
+            defaultValue={current.subNote ?? ''}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                onSubNote?.((subNoteRef.current?.value ?? '').trim())
+                onClose()
+              }
+            }}
+            onBlur={e => onSubNote?.(e.target.value.trim())}
+          />
+        </div>
+      )}
     </div>
   )
 }

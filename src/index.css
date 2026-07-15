@@ -399,6 +399,7 @@ html, body, #root {
 .td-cell:hover:not(.weekend-cell) { filter: brightness(.93); }
 
 .cell-text { font-size: 12px; font-weight: 500; }
+.cell-subnote { display: block; font-size: 10px; color: #6b7280; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .cell-judge      { background: #fef08a; }
 .cell-supervisor { background: #bbf7d0; }
@@ -535,6 +536,8 @@ html, body, #root {
 .btn-undo:disabled { opacity: .3; }
 
 /* ── Fill-mode hint in popover ─────────────────────────────────────────── */
+.popover-subnote-section { border-top: 1px solid var(--gray-100); padding-top: 8px; }
+
 .popover-fill-hint {
   font-size: 11px;
   color: var(--gray-500);
