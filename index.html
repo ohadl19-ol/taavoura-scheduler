@@ -93,7 +93,7 @@ a{text-decoration:none;color:inherit}
 /* ── divider ── */
 .div{height:1px;background:#e5e7eb;margin:0 16px}
 </style>
-<script>(function(){
+<script>document.addEventListener('DOMContentLoaded',function(){
 var s='MTExMQ==',k='sidur_auth_'+s.slice(0,8);
 if(localStorage.getItem(k)===s)return;
 var o=document.createElement('div');
@@ -112,7 +112,7 @@ function chk(){
 document.getElementById('pb').addEventListener('click',chk);
 document.getElementById('pi').addEventListener('keydown',function(e){if(e.key==='Enter')chk();});
 setTimeout(function(){document.getElementById('pi').focus();},100);
-})()</script>
+})</script>
 </head>
 <body>
 <div id="top">
