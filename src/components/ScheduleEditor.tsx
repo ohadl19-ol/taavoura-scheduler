@@ -121,8 +121,10 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
   const [driveLink, setDriveLink]             = useState<string | null>(null)
   const [pagesPublishing, setPagesPublishing] = useState(false)
   const [pagesLink, setPagesLink]             = useState<string | null>(null)
-  const [showLinkModal, setShowLinkModal] = useState(false)
-  const [importError, setImportError]     = useState<string | null>(null)
+  const [showLinkModal, setShowLinkModal]   = useState(false)
+  const [importError, setImportError]       = useState<string | null>(null)
+  const [editingDayNote, setEditingDayNote] = useState<number | null>(null)
+  const [dayNoteInput, setDayNoteInput]     = useState('')
   const cellRef     = useRef<HTMLElement | null>(null)
   const fillBtnRefs = useRef<(HTMLButtonElement | null)[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -210,6 +212,26 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     const updated = note ? { ...val, subNote: note } : { ...val, subNote: undefined }
     setSchedule({ ...schedule, assignments: { ...schedule.assignments, [key]: updated } })
   }, [schedule, activeCell, setSchedule])
+
+  // ── Day notes ──────────────────────────────────────────────────────────────
+  const handleDayNoteClick = (dayIdx: number) => {
+    if (!schedule) return
+    setDayNoteInput(schedule.dayNotes?.[dayIdx] ?? '')
+    setEditingDayNote(dayIdx)
+    setActiveCell(null)
+  }
+
+  const handleDayNoteSave = () => {
+    if (!schedule || editingDayNote === null) return
+    const newNotes = { ...(schedule.dayNotes ?? {}) }
+    if (dayNoteInput.trim()) {
+      newNotes[editingDayNote] = dayNoteInput.trim()
+    } else {
+      delete newNotes[editingDayNote]
+    }
+    setSchedule({ ...schedule, dayNotes: newNotes })
+    setEditingDayNote(null)
+  }
 
   // ── Approve constraint ─────────────────────────────────────────────────────
   const handleApprove = useCallback(() => {
@@ -485,16 +507,43 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
               const hasDaySummary = Object.keys(summary).length > 0
               return (
                 <tr key={dayIdx} className={day.isWeekend ? 'weekend-row' : ''}>
-                  <td className="td-day">
+                  <td
+                    className="td-day"
+                    onClick={() => !day.isWeekend && handleDayNoteClick(dayIdx)}
+                    style={{ cursor: day.isWeekend ? 'default' : 'pointer' }}
+                    title={day.isWeekend ? undefined : 'לחץ להוספת הערה ליום'}
+                  >
                     <span className="day-label">{dayLabel(day, days[dayIdx - 1]?.month)}</span>
-                    {hasDaySummary && (
-                      <div className="day-constraint-summary">
-                        {Object.entries(summary).map(([label, count]) => (
-                          <span key={label} className="day-constraint-badge">
-                            {count > 1 ? `${count}× ` : ''}{label}
-                          </span>
-                        ))}
+                    {editingDayNote === dayIdx ? (
+                      <div className="day-note-edit" onClick={e => e.stopPropagation()}>
+                        <input
+                          autoFocus
+                          className="day-note-input"
+                          value={dayNoteInput}
+                          onChange={e => setDayNoteInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleDayNoteSave()
+                            if (e.key === 'Escape') setEditingDayNote(null)
+                          }}
+                          onBlur={handleDayNoteSave}
+                          placeholder="הערה ליום…"
+                        />
                       </div>
+                    ) : (
+                      <>
+                        {schedule?.dayNotes?.[dayIdx] && (
+                          <div className="day-note-badge">{schedule.dayNotes[dayIdx]}</div>
+                        )}
+                        {hasDaySummary && (
+                          <div className="day-constraint-summary">
+                            {Object.entries(summary).map(([label, count]) => (
+                              <span key={label} className="day-constraint-badge">
+                                {count > 1 ? `${count}× ` : ''}{label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </td>
                   {config.prosecutors.map((_, proIdx) => {

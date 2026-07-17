@@ -386,6 +386,31 @@ html, body, #root {
 
 .day-label { font-size: 13px; color: var(--gray-700); }
 
+.day-note-badge {
+  font-size: 10px;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.day-note-edit { margin-top: 3px; }
+.day-note-input {
+  font-size: 11px;
+  padding: 2px 6px;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  width: 110px;
+  outline: none;
+  background: #fffbeb;
+  color: #1a1a2e;
+}
+
 .td-cell {
   padding: 0 4px;
   border-bottom: 1px solid var(--gray-200);

@@ -171,9 +171,12 @@ export function generateHTML(schedule: ScheduleData, config: AppConfig): string 
         + (sub ? '<div class="td-sub">' + esc(sub) + '</div>' : '')
         + '</td>'
     }).join('')
+    const note = schedule.dayNotes?.[di]
     return (
       '<tr class="' + (isWE ? 'tr-we' : '') + '">'
-      + '<td class="td-dt"><b>' + day.dayOfMonth + '</b> ' + HE_DOW_NAMES[day.dayOfWeek] + '</td>'
+      + '<td class="td-dt"><b>' + day.dayOfMonth + '</b> ' + HE_DOW_NAMES[day.dayOfWeek]
+      + (note ? '<div class="td-note">' + esc(note) + '</div>' : '')
+      + '</td>'
       + tds + '</tr>'
     )
   }).join('')
@@ -253,6 +256,7 @@ a{text-decoration:none;color:inherit}
 .asgn{font-size:.93rem;font-weight:700}
 .asgn-sub{font-size:.72rem;color:#6b7280;margin-top:2px}
 .td-sub{font-size:.68rem;color:#6b7280;margin-top:1px}
+.td-note{font-size:.65rem;color:#92400e;background:#fef3c7;border-radius:3px;padding:1px 4px;margin-top:2px;white-space:normal}
 .dim{font-size:.85rem;color:#9ca3af}
 .badge{font-size:.62rem;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-top:3px;white-space:nowrap}
 .badge-mishrad{background:#ede9fe;color:#5b21b6}
