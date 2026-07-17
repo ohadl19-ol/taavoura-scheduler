@@ -30,7 +30,7 @@ function classify(text: string, judges: string[]): Cls {
 
 function passwordScript(password: string): string {
   const encoded = btoa(unescape(encodeURIComponent(password)))
-  return `<script>(function(){
+  return `<script>document.addEventListener('DOMContentLoaded',function(){
 var s='${encoded}',k='sidur_auth_'+s.slice(0,8);
 if(localStorage.getItem(k)===s)return;
 var o=document.createElement('div');
@@ -49,7 +49,7 @@ function chk(){
 document.getElementById('pb').addEventListener('click',chk);
 document.getElementById('pi').addEventListener('keydown',function(e){if(e.key==='Enter')chk();});
 setTimeout(function(){document.getElementById('pi').focus();},100);
-})()</\script>`
+})</\script>`
 }
 
 export function generateHTML(schedule: ScheduleData, config: AppConfig): string {
