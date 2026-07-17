@@ -99,9 +99,9 @@ button{font-family:inherit;border:none;cursor:pointer;-webkit-tap-highlight-colo
 .ofc .dtag{background:var(--ofc-bg);color:var(--ofc-tx)}
 .off .dtag{background:var(--off-bg);color:var(--off-tx)}
 .oth .dtag{background:var(--oth-bg);color:var(--oth-tx)}
-.tbl-panel{padding:0 0 32px}
-.tbl-hint{padding:8px 14px 6px;font-size:.73rem;color:var(--text3);display:flex;align-items:center;gap:4px}
-.tbl-outer{overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;max-height:calc(100vh - var(--hdr-h,72px))}
+.tbl-panel{display:flex;flex-direction:column;height:calc(100vh - var(--hdr-h,72px));padding:0}
+.tbl-hint{flex-shrink:0;padding:8px 14px 6px;font-size:.73rem;color:var(--text3);display:flex;align-items:center;gap:4px}
+.tbl-outer{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 table{border-collapse:separate;border-spacing:0;font-size:.78rem;white-space:nowrap}
 thead th{position:sticky;top:0;z-index:22;background:var(--hdr-bg);color:#64748b;padding:10px 14px;font-weight:600;font-size:.7rem;border-bottom:2px solid #1e2a3a}
 th:first-child,td:first-child{position:sticky;right:0;background:var(--surface);border-left:1px solid var(--border)}
@@ -280,7 +280,7 @@ function renderTable(){
     });
     out+='</tr>';
   });
-  out+='</tbody></table></div><div class="legend">'+[['var(--crt-bar)','בית משפט'],['var(--det-bar)','ת. עצורים'],['var(--ofc-bar)','משרד'],['var(--onc-bar)','כוננות'],['var(--off-bar)','היעדרות'],['var(--oth-bar)','אחר']].map(([c,l])=>'<div class="lgi"><div class="lgd" style="background:'+c+'"></div>'+l+'</div>').join('')+'</div>';
+  out+='</tbody></table></div>';
   document.getElementById('tbl-bd').innerHTML=out;
 }
 function selDay(i){
