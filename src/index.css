@@ -146,6 +146,8 @@ html, body, #root {
 
 .btn-success   { background: var(--green); color: #fff; }
 .btn-success:hover:not(:disabled) { background: #15803d; }
+.btn-excel     { background: #217346; color: #fff; }
+.btn-excel:hover:not(:disabled) { background: #185c37; }
 
 .btn-danger    { background: #fee2e2; color: var(--red); border: 1px solid #fecaca; }
 .btn-danger:hover:not(:disabled) { background: #fecaca; }

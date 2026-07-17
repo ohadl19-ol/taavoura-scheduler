@@ -5,6 +5,7 @@ import { useSchedule } from '../store/useAppStore'
 import CellPopover from './CellPopover'
 import { generateHTML } from '../utils/htmlExport'
 import { generatePDF } from '../utils/pdfExport'
+import { HEBREW_DAYS, HEBREW_MONTHS } from '../types'
 
 interface Props {
   scheduleId: string
@@ -117,6 +118,7 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
   const [fillColumnIdx, setFillColumnIdx] = useState<number | null>(null)
   const [exporting, setExporting]         = useState(false)
   const [exportingPdf, setExportingPdf]   = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
   const [pagesPublishing, setPagesPublishing] = useState(false)
   const [pagesLink, setPagesLink]             = useState<string | null>(null)
@@ -346,6 +348,29 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     }
   }
 
+  const handleExportExcel = async () => {
+    if (!schedule) return
+    setExportingExcel(true)
+    try {
+      const headers = ['תאריך', 'יום', ...config.prosecutors]
+      const rows = days.map((day, di) => {
+        const month = HEBREW_MONTHS[day.month - 1]
+        const dateStr = `${day.dayOfMonth} ${month}`
+        const dayName = HEBREW_DAYS[day.dayOfWeek]
+        const cells = config.prosecutors.map((_, pi) => {
+          const val = schedule.assignments[`${di}-${pi}`]
+          const note = val?.subNote ? ` (${val.subNote})` : ''
+          return val ? val.label + note : ''
+        })
+        return [dateStr, dayName, ...cells]
+      })
+      const filename = `סידור-${config.branch}-${schedule.startDate}.xlsx`
+      await window.api.export.excel(filename, headers, rows)
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   if (!schedule) {
     return <div className="screen"><div className="loading">טוען…</div></div>
   }
@@ -399,6 +424,9 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
 
           <button className="btn btn-success" onClick={handleExport} disabled={exporting}>
             {exporting ? 'מייצא…' : '⬇ HTML'}
+          </button>
+          <button className="btn btn-excel" onClick={handleExportExcel} disabled={exportingExcel}>
+            {exportingExcel ? 'מייצא…' : '📊 Excel'}
           </button>
           <button className="btn btn-primary" onClick={handleExportPdf} disabled={exportingPdf}>
             {exportingPdf ? 'מייצא…' : '📄 PDF'}

@@ -14,8 +14,9 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id: string) => ipcRenderer.invoke('schedule:delete', id),
   },
   export: {
-    html: (filename: string, html: string) => ipcRenderer.invoke('export:html', filename, html),
-    pdf:  (filename: string, html: string) => ipcRenderer.invoke('export:pdf',  filename, html),
+    html:  (filename: string, html: string) => ipcRenderer.invoke('export:html', filename, html),
+    pdf:   (filename: string, html: string) => ipcRenderer.invoke('export:pdf',  filename, html),
+    excel: (filename: string, headers: string[], rows: string[][]) => ipcRenderer.invoke('export:excel', filename, headers, rows),
   },
   pages: {
     publish: (token: string, html: string) => ipcRenderer.invoke('pages:publish', token, html),

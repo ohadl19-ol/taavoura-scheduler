@@ -70,6 +70,7 @@ declare global {
       export: {
         html(filename: string, html: string): Promise<boolean>
         pdf(filename: string, html: string): Promise<boolean>
+        excel(filename: string, headers: string[], rows: string[][]): Promise<boolean>
       }
       pages: {
         publish(token: string, html: string): Promise<string>

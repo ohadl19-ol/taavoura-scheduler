@@ -125,6 +125,59 @@ ipcMain.handle('schedule:delete', (_e, id: string) => {
 
 // ── IPC: HTML Export ─────────────────────────────────────────────────────────
 
+ipcMain.handle('export:excel', async (_e, filename: string, headers: string[], rows: string[][]) => {
+  const { filePath } = await dialog.showSaveDialog({
+    title: 'ייצא Excel',
+    defaultPath: filename,
+    filters: [{ name: 'Excel', extensions: ['xlsx'] }],
+  })
+  if (!filePath) return false
+
+  const ExcelJS = await import('exceljs')
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('סידור עבודה', { views: [{ rightToLeft: true }] })
+
+  ws.addRow(headers)
+  const hdrRow = ws.getRow(1)
+  hdrRow.eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } }
+    cell.font = { color: { argb: 'FFC7D2FE' }, bold: true, size: 11 }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+  })
+  hdrRow.height = 22
+
+  rows.forEach((row, ri) => {
+    const wsRow = ws.addRow(row)
+    const isWeekend = row[1] === 'שישי' || row[1] === 'שבת'
+    wsRow.eachCell((cell, colNum) => {
+      cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (isWeekend) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
+        cell.font = { color: { argb: 'FF9CA3AF' }, italic: true }
+      } else if (colNum <= 2) {
+        cell.font = { bold: true }
+      }
+      cell.border = { bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } } }
+    })
+    wsRow.height = 20
+    if (ri % 2 === 0 && !isWeekend) {
+      wsRow.eachCell(cell => {
+        if (!cell.fill || (cell.fill as ExcelJS.FillPattern).fgColor?.argb === 'FFF3F4F6') return
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }
+      })
+    }
+  })
+
+  ws.getColumn(1).width = 12
+  ws.getColumn(2).width = 8
+  for (let c = 3; c <= headers.length; c++) ws.getColumn(c).width = 14
+
+  const buf = await wb.xlsx.writeBuffer()
+  writeFileSync(filePath, Buffer.from(buf))
+  shell.openPath(filePath)
+  return true
+})
+
 ipcMain.handle('export:html', async (_e, filename: string, html: string) => {
   const { filePath } = await dialog.showSaveDialog({
     title: 'ייצא HTML להפצה',
