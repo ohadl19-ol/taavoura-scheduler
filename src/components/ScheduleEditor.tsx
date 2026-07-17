@@ -117,8 +117,7 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
   const [fillColumnIdx, setFillColumnIdx] = useState<number | null>(null)
   const [exporting, setExporting]         = useState(false)
   const [exportingPdf, setExportingPdf]   = useState(false)
-  const [driveUploading, setDriveUploading]   = useState(false)
-  const [driveLink, setDriveLink]             = useState<string | null>(null)
+
   const [pagesPublishing, setPagesPublishing] = useState(false)
   const [pagesLink, setPagesLink]             = useState<string | null>(null)
   const [showLinkModal, setShowLinkModal]   = useState(false)
@@ -347,22 +346,6 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     }
   }
 
-  const handleDriveUpload = async () => {
-    if (!schedule || !config.driveClientId || !config.driveClientSecret) return
-    setDriveUploading(true)
-    setDriveLink(null)
-    try {
-      const html     = generateHTML(schedule, config)
-      const filename = `סידור-${config.branch}-${schedule.startDate}-${schedule.endDate}.html`
-      const link     = await window.api.drive.upload(config.driveClientId, config.driveClientSecret, filename, html)
-      setDriveLink(link)
-    } catch (e) {
-      alert('שגיאה בהעלאה ל-Drive: ' + (e instanceof Error ? e.message : String(e)))
-    } finally {
-      setDriveUploading(false)
-    }
-  }
-
   if (!schedule) {
     return <div className="screen"><div className="loading">טוען…</div></div>
   }
@@ -413,11 +396,7 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
               {pagesPublishing ? 'מפרסם…' : '🌐 פרסם'}
             </button>
           )}
-          {config.driveClientId && config.driveClientSecret && (
-            <button className="btn btn-drive" onClick={handleDriveUpload} disabled={driveUploading}>
-              {driveUploading ? 'מעלה…' : '☁️ Drive'}
-            </button>
-          )}
+
           <button className="btn btn-success" onClick={handleExport} disabled={exporting}>
             {exporting ? 'מייצא…' : '⬇ HTML'}
           </button>
@@ -437,15 +416,6 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
         </div>
       )}
 
-      {driveLink && (
-        <div className="drive-success-bar">
-          ✓ הועלה ל-Drive — הקישור הועתק ללוח:{' '}
-          <a href="#" onClick={e => { e.preventDefault(); window.open(driveLink) }} style={{ color: '#1d4ed8', fontWeight: 600 }}>
-            {driveLink}
-          </a>
-          <button onClick={() => setDriveLink(null)}>✕</button>
-        </div>
-      )}
 
       {importError && (
         <div className="import-error-bar">

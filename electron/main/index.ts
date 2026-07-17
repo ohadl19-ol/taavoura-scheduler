@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, clipboard } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'fs'
-import { driveService } from './driveService'
 import { publishToPages } from './githubPages'
 
 const isDev = process.env['NODE_ENV'] === 'development'
@@ -146,21 +145,6 @@ ipcMain.handle('pages:publish', async (_e, token: string, html: string) => {
   return link
 })
 
-// ── IPC: Google Drive ─────────────────────────────────────────────────────────
-
-ipcMain.handle('drive:status', () => driveService.isAuthenticated())
-
-ipcMain.handle('drive:authorize', async (_e, clientId: string, clientSecret: string) => {
-  await driveService.authorize({ clientId, clientSecret })
-})
-
-ipcMain.handle('drive:logout', () => driveService.logout())
-
-ipcMain.handle('drive:upload', async (_e, clientId: string, clientSecret: string, filename: string, html: string) => {
-  const link = await driveService.upload({ clientId, clientSecret }, filename, html)
-  clipboard.writeText(link)
-  return link
-})
 
 // ── IPC: PDF Export ───────────────────────────────────────────────────────────
 
