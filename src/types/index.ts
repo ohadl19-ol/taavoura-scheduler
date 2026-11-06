@@ -62,6 +62,8 @@ export interface ScheduleData {
   partialConstraints?: Record<string, string>  // cell key → label (יוצא מוקדם / מגיע מאוחר / עבודה מהבית)
   dayNotes?: Record<string, string>  // dayIndex → note text
   judgeLoad?: JudgeLoad              // פנימי — לא נכלל בייצוא לתובעים
+  // איפה שופט שיושב בכמה מקומות (שירלי נצרת/טבריה) יושב ביום מסוים: תאריך → מפתח ביומן → השם בסידור
+  judgeLocation?: Record<string, Record<string, string>>
   createdAt: string
   updatedAt: string
 }

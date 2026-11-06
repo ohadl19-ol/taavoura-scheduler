@@ -13608,6 +13608,28 @@ function resolveKey(label, map) {
   const keys = new Set(Object.entries(map).filter(([l]) => words.every((w) => l.split(/\s+/).includes(w))).map(([, k]) => k));
   return keys.size === 1 ? [...keys][0] : void 0;
 }
+function locationVariants(labels, courts) {
+  if (labels.length < 2) return null;
+  const words = labels.map((l) => l.split(/\s+/));
+  const common = words[0].filter((w) => words.every((ws) => ws.includes(w)));
+  const courtText = norm(courts.join(" "));
+  const isPlace = (ws) => {
+    const rest = ws.filter((w) => !common.includes(w));
+    return rest.length > 0 && rest.every((w) => w.length >= 3 && courtText.includes(norm(w)));
+  };
+  const places = labels.filter((_, i) => isPlace(words[i]));
+  return places.length >= 2 ? places : null;
+}
+function dayLocation(schedule, key, date, places, sitting) {
+  const chosen = schedule.judgeLocation?.[date]?.[key];
+  if (chosen && places.includes(chosen)) return chosen;
+  if (sitting) {
+    const court = norm(sitting.court);
+    const byCourt = places.find((p) => p.split(/\s+/).some((w) => w.length >= 3 && court.includes(norm(w)) && !places.every((q) => q.includes(w))));
+    if (byCourt) return byCourt;
+  }
+  return places[0];
+}
 function analyzeLoad(schedule, config, days) {
   const load = schedule.judgeLoad;
   if (!load) return null;
@@ -13649,7 +13671,9 @@ function analyzeLoad(schedule, config, days) {
       const s = findSitting(list, key);
       if (!s || s.total === 0) continue;
       const pros = assignedTo.get(key) ?? [];
-      const ds = { key, label: displayLabel(labels), labels, sitting: s, prosecutors: pros };
+      const places = locationVariants(labels, load.courts);
+      const label = places ? dayLocation(schedule, key, day.date, places, s) : displayLabel(labels);
+      const ds = { key, label, labels, sitting: s, prosecutors: pros, ...places ? { places } : {} };
       out.push(ds);
       if (pros.length === 0) res.uncovered.push({ dayIdx, ds });
       else {
@@ -13679,13 +13703,13 @@ function breakdown(s) {
     s.other && `אחר ${s.other}`
   ].filter(Boolean).join(" · ");
 }
-function trackedJudges(config, map) {
+function trackedJudges(config, map, courts = []) {
   const byKey = /* @__PURE__ */ new Map();
   for (const j of config.judges) {
     const k = map[j];
     if (k) byKey.set(k, [...byKey.get(k) ?? [], j]);
   }
-  return [...byKey.entries()].map(([key, labels]) => ({ key, label: displayLabel(labels) }));
+  return [...byKey.entries()].map(([key, labels]) => ({ key, label: displayLabel(labels), places: locationVariants(labels, courts) }));
 }
 const DEFAULT_DIARY_COURTS = ["שלום נוף הגליל-נצרת", "שלום טבריה"];
 function sundaysOf(start, end) {
@@ -14743,6 +14767,14 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
     const updated = note ? { ...val, subNote: note } : { ...val, subNote: void 0 };
     setSchedule({ ...schedule, assignments: { ...schedule.assignments, [key]: updated } });
   }, [schedule, activeCell, setSchedule]);
+  const togglePlace = (dayIdx, key, places, current) => {
+    if (!schedule) return;
+    const date = days[dayIdx].date;
+    const next = places[(places.indexOf(current) + 1) % places.length];
+    const loc = { ...schedule.judgeLocation ?? {} };
+    loc[date] = { ...loc[date] ?? {}, [key]: next };
+    setSchedule({ ...schedule, judgeLocation: loc });
+  };
   const handleDayNoteClick = (dayIdx) => {
     if (!schedule) return;
     setDayNoteInput(schedule.dayNotes?.[dayIdx] ?? "");
@@ -14897,16 +14929,20 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
       ...config.generalOptions ?? GENERAL_OPTIONS,
       ...SUPERVISOR_OPTIONS
     ])];
-    const tracked = loadInfo ? trackedJudges(config, loadInfo.map) : [];
+    const tracked = loadInfo ? trackedJudges(config, loadInfo.map, schedule.judgeLoad?.courts) : [];
+    const cols = tracked.flatMap((t) => t.places ? t.places.map((place) => ({ t, place })) : [{ t, place: null }]);
     const rows = days.map((day, di) => ({
       date: `${String(day.dayOfMonth).padStart(2, "0")}.${String(day.month).padStart(2, "0")}.${String(day.year).slice(2)}`,
       day: HEBREW_DAYS[day.dayOfWeek],
       weekend: day.isWeekend,
-      judges: tracked.length ? tracked.map((t) => {
+      judges: cols.length ? cols.map(({ t, place }) => {
         const list = schedule.judgeLoad?.days[day.date];
         if (!list || day.isWeekend) return null;
         const s = findSitting(list, t.key);
-        return s ? { n: s.total, note: `${keyJudge(t.key)} · ${shortCourt(s.court)}
+        if (s && place && dayLocation(schedule, t.key, day.date, t.places, s) !== place) {
+          return { n: 0, note: `${t.label} לא כאן ביום הזה` };
+        }
+        return s ? { n: s.total, note: `${keyJudge(t.key)}${place ? ` — ${place}` : ` · ${shortCourt(s.court)}`}
 ${breakdown(s)}` } : { n: 0, note: `${keyJudge(t.key)} לא יושב/ת ביום הזה` };
       }) : void 0,
       cells: config.prosecutors.map((_, pi) => {
@@ -14920,7 +14956,7 @@ ${breakdown(s)}` } : { n: 0, note: `${keyJudge(t.key)} לא יושב/ת ביום
       prosecutors: config.prosecutors,
       rows,
       options,
-      judgeCols: tracked.length ? tracked.map((t) => ({ label: t.label, match: t.label })) : void 0,
+      judgeCols: cols.length ? cols.map(({ t, place }) => ({ label: place ?? t.label, match: place ?? t.label })) : void 0,
       busyThreshold: config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD
     });
   };
@@ -15154,10 +15190,15 @@ ${breakdown(s)}` } : { n: 0, note: `${keyJudge(t.key)} לא יושב/ת ביום
                   loadInfo?.loadedDays.has(dayIdx) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "day-sittings", children: (loadInfo.perDay.get(dayIdx) ?? []).length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sit-none", children: "אין ישיבות" }) : (loadInfo.perDay.get(dayIdx) ?? []).map((ds) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
                     "span",
                     {
-                      className: `sit ${ds.prosecutors.length === 0 ? "sit-uncovered" : ""}`,
+                      className: `sit ${ds.prosecutors.length === 0 ? "sit-uncovered" : ""} ${ds.places ? "sit-place" : ""}`,
                       title: `${keyJudge(ds.key)} · ${shortCourt(keyCourt(ds.key))}
-${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? "\nאין תובע!" : ""}`,
+${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? "\nאין תובע!" : ""}${ds.places ? "\n\nלחץ להחלפת המקום (" + ds.places.join(" / ") + ") — כך זה יופיע בקובץ למכין" : ""}`,
+                      onClick: ds.places ? (e) => {
+                        e.stopPropagation();
+                        togglePlace(dayIdx, ds.key, ds.places, ds.label);
+                      } : void 0,
                       children: [
+                        ds.places && "⇄ ",
                         ds.label,
                         " ",
                         ds.sitting.total

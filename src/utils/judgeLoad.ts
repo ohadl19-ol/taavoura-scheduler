@@ -144,9 +144,37 @@ export function resolveKey(label: string, map: Record<string, string>): string |
   return keys.size === 1 ? [...keys][0] : undefined
 }
 
+/** שמות בסידור שהם אותו שופט במקומות שונים ("שירלי נצרת" / "שירלי טבריה").
+ *  מזוהה כשמה שמבדיל בין השמות הוא שם של בית משפט. גישור וכד׳ אינם מקום. */
+export function locationVariants(labels: string[], courts: string[]): string[] | null {
+  if (labels.length < 2) return null
+  const words = labels.map(l => l.split(/\s+/))
+  const common = words[0].filter(w => words.every(ws => ws.includes(w)))
+  const courtText = norm(courts.join(' '))
+  const isPlace = (ws: string[]) => {
+    const rest = ws.filter(w => !common.includes(w))
+    return rest.length > 0 && rest.every(w => w.length >= 3 && courtText.includes(norm(w)))
+  }
+  const places = labels.filter((_, i) => isPlace(words[i]))
+  return places.length >= 2 ? places : null
+}
+
+/** המקום של השופט ביום: מה שסומן בעורך, ואם לא — לפי בית המשפט ביומן, ואם לא — הראשון */
+export function dayLocation(schedule: ScheduleData, key: string, date: string, places: string[], sitting?: JudgeSitting): string {
+  const chosen = schedule.judgeLocation?.[date]?.[key]
+  if (chosen && places.includes(chosen)) return chosen
+  if (sitting) {
+    const court = norm(sitting.court)
+    const byCourt = places.find(p => p.split(/\s+/).some(w => w.length >= 3 && court.includes(norm(w)) && !places.every(q => q.includes(w))))
+    if (byCourt) return byCourt
+  }
+  return places[0]
+}
+
 export interface DaySitting {
   key: string
   label: string             // שם לתצוגה ("שירלי" כששתי אפשרויות מותאמות לאותה שופטת)
+  places?: string[]         // כשהשופט יושב בכמה מקומות — האפשרויות, ו-label הוא המקום של היום
   labels: string[]          // השמות בסידור שמותאמים לשופט הזה
   sitting: JudgeSitting
   prosecutors: number[]     // תובעים ששובצו אליו ביום הזה
@@ -201,7 +229,9 @@ export function analyzeLoad(schedule: ScheduleData, config: AppConfig, days: Day
       const s = findSitting(list, key)
       if (!s || s.total === 0) continue
       const pros = assignedTo.get(key) ?? []
-      const ds = { key, label: displayLabel(labels), labels, sitting: s, prosecutors: pros }
+      const places = locationVariants(labels, load.courts)
+      const label = places ? dayLocation(schedule, key, day.date, places, s) : displayLabel(labels)
+      const ds: DaySitting = { key, label, labels, sitting: s, prosecutors: pros, ...(places ? { places } : {}) }
       out.push(ds)
       if (pros.length === 0) res.uncovered.push({ dayIdx, ds })
       else {
@@ -240,12 +270,12 @@ export function sittingsText(a: LoadAnalysis, dayIdx: number): string {
   return list.map(ds => `${ds.label} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ''}`).join(' · ')
 }
 
-/** השופטים שנבדקים (לפי ההתאמה), בסדר שבהגדרות — שם תצוגה + מפתח ביומן. לתבנית למכין. */
-export function trackedJudges(config: AppConfig, map: Record<string, string>): { key: string; label: string }[] {
+/** השופטים שנבדקים (לפי ההתאמה), בסדר שבהגדרות — שם תצוגה + מפתח ביומן + מקומות. לתבנית למכין. */
+export function trackedJudges(config: AppConfig, map: Record<string, string>, courts: string[] = []): { key: string; label: string; places: string[] | null }[] {
   const byKey = new Map<string, string[]>()
   for (const j of config.judges) {
     const k = map[j]
     if (k) byKey.set(k, [...(byKey.get(k) ?? []), j])
   }
-  return [...byKey.entries()].map(([key, labels]) => ({ key, label: displayLabel(labels) }))
+  return [...byKey.entries()].map(([key, labels]) => ({ key, label: displayLabel(labels), places: locationVariants(labels, courts) }))
 }

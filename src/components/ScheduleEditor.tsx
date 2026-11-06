@@ -4,7 +4,7 @@ import { getDaysForSchedule, dayLabel, rangeLabel } from '../utils/dateUtils'
 import { useSchedule, useConfig } from '../store/useAppStore'
 import ImportScheduleModal from './ImportScheduleModal'
 import JudgeLoadModal from './JudgeLoadModal'
-import { analyzeLoad, breakdown, keyJudge, keyCourt, shortCourt, trackedJudges, findSitting, DEFAULT_BUSY_THRESHOLD } from '../utils/judgeLoad'
+import { analyzeLoad, breakdown, keyJudge, keyCourt, shortCourt, trackedJudges, findSitting, dayLocation, DEFAULT_BUSY_THRESHOLD } from '../utils/judgeLoad'
 import CellPopover from './CellPopover'
 import { generateHTML } from '../utils/htmlExport'
 import { generatePDF } from '../utils/pdfExport'
@@ -229,6 +229,16 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     setSchedule({ ...schedule, assignments: { ...schedule.assignments, [key]: updated } })
   }, [schedule, activeCell, setSchedule])
 
+  // ── מקום השופט ביום (שירלי נצרת / טבריה) ────────────────────────────────────
+  const togglePlace = (dayIdx: number, key: string, places: string[], current: string) => {
+    if (!schedule) return
+    const date = days[dayIdx].date
+    const next = places[(places.indexOf(current) + 1) % places.length]
+    const loc = { ...(schedule.judgeLocation ?? {}) }
+    loc[date] = { ...(loc[date] ?? {}), [key]: next }
+    setSchedule({ ...schedule, judgeLocation: loc })
+  }
+
   // ── Day notes ──────────────────────────────────────────────────────────────
   const handleDayNoteClick = (dayIdx: number) => {
     if (!schedule) return
@@ -397,18 +407,23 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
       ...(config.generalOptions ?? GENERAL_OPTIONS),
       ...SUPERVISOR_OPTIONS,
     ])]
-    const tracked = loadInfo ? trackedJudges(config, loadInfo.map) : []
+    const tracked = loadInfo ? trackedJudges(config, loadInfo.map, schedule.judgeLoad?.courts) : []
+    // שופט שיושב בכמה מקומות (שירלי) — עמודה לכל מקום; המספר בעמודה של המקום שסומן לאותו יום
+    const cols = tracked.flatMap(t => (t.places ? t.places.map(place => ({ t, place })) : [{ t, place: null as string | null }]))
     const rows = days.map((day, di) => ({
       date: `${String(day.dayOfMonth).padStart(2, '0')}.${String(day.month).padStart(2, '0')}.${String(day.year).slice(2)}`,
       day: HEBREW_DAYS[day.dayOfWeek],
       weekend: day.isWeekend,
-      judges: tracked.length
-        ? tracked.map(t => {
+      judges: cols.length
+        ? cols.map(({ t, place }) => {
             const list = schedule.judgeLoad?.days[day.date]
             if (!list || day.isWeekend) return null
             const s = findSitting(list, t.key)
+            if (s && place && dayLocation(schedule, t.key, day.date, t.places!, s) !== place) {
+              return { n: 0, note: `${t.label} לא כאן ביום הזה` }
+            }
             return s
-              ? { n: s.total, note: `${keyJudge(t.key)} · ${shortCourt(s.court)}\n${breakdown(s)}` }
+              ? { n: s.total, note: `${keyJudge(t.key)}${place ? ` — ${place}` : ` · ${shortCourt(s.court)}`}\n${breakdown(s)}` }
               : { n: 0, note: `${keyJudge(t.key)} לא יושב/ת ביום הזה` }
           })
         : undefined,
@@ -423,7 +438,7 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
       prosecutors: config.prosecutors,
       rows,
       options,
-      judgeCols: tracked.length ? tracked.map(t => ({ label: t.label, match: t.label })) : undefined,
+      judgeCols: cols.length ? cols.map(({ t, place }) => ({ label: place ?? t.label, match: place ?? t.label })) : undefined,
       busyThreshold: config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD,
     })
   }
@@ -653,10 +668,11 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                               : (loadInfo.perDay.get(dayIdx) ?? []).map(ds => (
                                 <span
                                   key={ds.key}
-                                  className={`sit ${ds.prosecutors.length === 0 ? 'sit-uncovered' : ''}`}
-                                  title={`${keyJudge(ds.key)} · ${shortCourt(keyCourt(ds.key))}\n${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? '\nאין תובע!' : ''}`}
+                                  className={`sit ${ds.prosecutors.length === 0 ? 'sit-uncovered' : ''} ${ds.places ? 'sit-place' : ''}`}
+                                  title={`${keyJudge(ds.key)} · ${shortCourt(keyCourt(ds.key))}\n${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? '\nאין תובע!' : ''}${ds.places ? '\n\nלחץ להחלפת המקום (' + ds.places.join(' / ') + ') — כך זה יופיע בקובץ למכין' : ''}`}
+                                  onClick={ds.places ? e => { e.stopPropagation(); togglePlace(dayIdx, ds.key, ds.places!, ds.label) } : undefined}
                                 >
-                                  {ds.label} {ds.sitting.total}
+                                  {ds.places && '⇄ '}{ds.label} {ds.sitting.total}
                                 </span>
                               ))}
                           </div>

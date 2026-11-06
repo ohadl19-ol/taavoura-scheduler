@@ -805,3 +805,5 @@ html, body, #root {
 .judge-map-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .judge-map-table th, .judge-map-table td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; text-align: right; }
 .judge-map-table select { width: 100%; padding: 3px; }
+.day-sittings .sit-place { cursor: pointer; border-style: dashed; }
+.day-sittings .sit-place:hover { background: #ffedd5; }
