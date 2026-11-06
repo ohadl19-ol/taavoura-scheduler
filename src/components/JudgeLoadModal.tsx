@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppConfig, ScheduleData } from '../types'
 import {
   parseJudgeFile, mergeLoad, diaryJudges, effectiveMap, keyJudge, keyCourt, shortCourt,
-  DEFAULT_BUSY_THRESHOLD,
+  DEFAULT_BUSY_THRESHOLD, NO_CHECK,
 } from '../utils/judgeLoad'
 import { formatShortDate } from '../utils/scheduleImport'
 
@@ -39,7 +39,7 @@ export default function JudgeLoadModal({ schedule, config, onApply, onSaveConfig
   const judges = useMemo(() => diaryJudges(load), [load])
   const [map, setMap] = useState<Record<string, string>>(() => {
     const eff = effectiveMap(config, load)
-    return Object.fromEntries(config.judges.map(j => [j, eff[j] ?? '']))
+    return Object.fromEntries(config.judges.map(j => [j, config.judgeDiaryMap?.[j] === NO_CHECK ? NO_CHECK : eff[j] ?? '']))
   })
   const [threshold, setThreshold] = useState(String(config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD))
 
@@ -106,7 +106,7 @@ export default function JudgeLoadModal({ schedule, config, onApply, onSaveConfig
     onClose()
   }
 
-  const mappedKeys = new Set(Object.values(map).filter(Boolean))
+  const mappedKeys = new Set(Object.values(map).filter(v => v && v !== NO_CHECK))
   const unmapped = judges.filter(j => !mappedKeys.has(j.key) && j.total > 0)
   const loadedDates = Object.keys(load?.days ?? {}).sort()
 
@@ -162,8 +162,9 @@ export default function JudgeLoadModal({ schedule, config, onApply, onSaveConfig
                     <td>{j}</td>
                     <td>
                       <select value={map[j] ?? ''} onChange={e => setMap({ ...map, [j]: e.target.value })}>
-                        <option value="">— לא לבדוק —</option>
-                        {map[j] && !judges.some(x => x.key === map[j]) && (
+                        <option value="">— לא נמצא ביומן —</option>
+                        <option value={NO_CHECK}>✕ לא לבדוק</option>
+                        {map[j] && map[j] !== NO_CHECK && !judges.some(x => x.key === map[j]) && (
                           <option value={map[j]}>{keyJudge(map[j])} · {shortCourt(keyCourt(map[j]))} (לא בנתונים)</option>
                         )}
                         {judges.map(x => (

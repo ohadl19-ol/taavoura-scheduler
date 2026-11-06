@@ -13558,15 +13558,19 @@ function guessMatch(label, keys) {
       best = [k];
     } else if (score === bestScore && score > 0) best.push(k);
   }
-  return best.length === 1 ? best[0] : void 0;
+  if (best.length === 1) return best[0];
+  if (best.length > 1 && best.every((k) => keyJudge(k) === keyJudge(best[0]))) return best[0];
+  return void 0;
 }
+const NO_CHECK = "-";
 function effectiveMap(config, load) {
   const keys = diaryJudges(load).map((j) => j.key);
   const saved = config.judgeDiaryMap ?? {};
   const out = {};
   for (const j of config.judges) {
-    if (j in saved) {
-      if (saved[j]) out[j] = saved[j];
+    if (saved[j] === NO_CHECK) continue;
+    if (saved[j] && saved[j] !== NO_CHECK) {
+      out[j] = saved[j];
       continue;
     }
     const g = guessMatch(j, keys);
@@ -13668,7 +13672,7 @@ function JudgeLoadModal({ schedule, config, onApply, onSaveConfig, onClose }) {
   const judges = reactExports.useMemo(() => diaryJudges(load), [load]);
   const [map, setMap] = reactExports.useState(() => {
     const eff = effectiveMap(config, load);
-    return Object.fromEntries(config.judges.map((j) => [j, eff[j] ?? ""]));
+    return Object.fromEntries(config.judges.map((j) => [j, config.judgeDiaryMap?.[j] === NO_CHECK ? NO_CHECK : eff[j] ?? ""]));
   });
   const [threshold, setThreshold] = reactExports.useState(String(config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD));
   const [courts, setCourts] = reactExports.useState((config.diaryCourts ?? DEFAULT_DIARY_COURTS).join("\n"));
@@ -13739,7 +13743,7 @@ function JudgeLoadModal({ schedule, config, onApply, onSaveConfig, onClose }) {
     onApply(rest);
     onClose();
   };
-  const mappedKeys = new Set(Object.values(map).filter(Boolean));
+  const mappedKeys = new Set(Object.values(map).filter((v) => v && v !== NO_CHECK));
   const unmapped = judges.filter((j) => !mappedKeys.has(j.key) && j.total > 0);
   const loadedDates = Object.keys(load?.days ?? {}).sort();
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal judge-load-modal", onClick: (e) => e.stopPropagation(), children: [
@@ -13829,8 +13833,9 @@ function JudgeLoadModal({ schedule, config, onApply, onSaveConfig, onClose }) {
         /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: config.judges.map((j) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: j }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: map[j] ?? "", onChange: (e) => setMap({ ...map, [j]: e.target.value }), children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "— לא לבדוק —" }),
-            map[j] && !judges.some((x) => x.key === map[j]) && /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: map[j], children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "— לא נמצא ביומן —" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: NO_CHECK, children: "✕ לא לבדוק" }),
+            map[j] && map[j] !== NO_CHECK && !judges.some((x) => x.key === map[j]) && /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: map[j], children: [
               keyJudge(map[j]),
               " · ",
               shortCourt(keyCourt(map[j])),

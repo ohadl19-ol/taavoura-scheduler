@@ -86,16 +86,24 @@ export function guessMatch(label: string, keys: string[]): string | undefined {
     if (score < nameTokens.length) continue   // כל המילים חייבות להתאים ("גישור רומן" ≠ רומן)
     if (score > bestScore) { bestScore = score; best = [k] } else if (score === bestScore && score > 0) best.push(k)
   }
-  return best.length === 1 ? best[0] : undefined
+  if (best.length === 1) return best[0]
+  // אותו שופט בכמה בתי משפט (למשל רומן גם בטבריה) — בית המשפט שבו יש לו הכי הרבה דיונים.
+  // keys ממוינים לפי סך הדיונים (diaryJudges), אז הראשון הוא העיקרי.
+  if (best.length > 1 && best.every(k => keyJudge(k) === keyJudge(best[0]))) return best[0]
+  return undefined
 }
 
-/** ההתאמה בפועל: מה שנשמר בהגדרות, ולשאר — ניחוש. '' = המשתמש בחר "לא לבדוק". */
+/** ערך שמור שמשמעו "לא לבדוק" (בחירה מפורשת). ריק / חסר = התאמה אוטומטית. */
+export const NO_CHECK = '-'
+
+/** ההתאמה בפועל: מה שנשמר בהגדרות, ולשאר — ניחוש. NO_CHECK = המשתמש בחר "לא לבדוק". */
 export function effectiveMap(config: AppConfig, load: JudgeLoad | undefined): Record<string, string> {
   const keys = diaryJudges(load).map(j => j.key)
   const saved = config.judgeDiaryMap ?? {}
   const out: Record<string, string> = {}
   for (const j of config.judges) {
-    if (j in saved) { if (saved[j]) out[j] = saved[j]; continue }
+    if (saved[j] === NO_CHECK) continue
+    if (saved[j] && saved[j] !== NO_CHECK) { out[j] = saved[j]; continue }
     const g = guessMatch(j, keys)
     if (g) out[j] = g
   }
