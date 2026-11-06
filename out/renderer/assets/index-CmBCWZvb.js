@@ -13485,7 +13485,22 @@ const DEFAULT_BUSY_THRESHOLD = 100;
 const sittingKey = (s) => `${s.judge}|${s.court}`;
 const keyJudge = (k) => k.split("|")[0];
 const keyCourt = (k) => k.split("|")[1] ?? "";
-const shortCourt = (c) => c.replace(/^שלום\s*/, "");
+const ANY_COURT = "*";
+const shortCourt = (c) => c === ANY_COURT ? "כל בתי המשפט" : c.replace(/^שלום\s*/, "");
+function findSitting(list, key) {
+  if (keyCourt(key) !== ANY_COURT) return list.find((x) => sittingKey(x) === key);
+  const all = list.filter((x) => x.judge === keyJudge(key));
+  if (!all.length) return void 0;
+  return all.reduce((a, b) => ({
+    judge: a.judge,
+    court: a.court === b.court ? a.court : `${a.court} + ${b.court}`,
+    total: a.total + b.total,
+    arr: a.arr + b.arr,
+    proof: a.proof + b.proof,
+    sen: a.sen + b.sen,
+    other: a.other + b.other
+  }));
+}
 const norm = (s) => s.replace(/["'`׳״’‘”“.‏‎]/g, "").replace(/\s+/g, " ").trim();
 function parseJudgeFile(text) {
   let d;
@@ -13536,9 +13551,15 @@ function mergeLoad(prev, incoming, start, end) {
 }
 const sortSittings = (l) => l && [...l].sort((a, b) => sittingKey(a).localeCompare(sittingKey(b)));
 function diaryJudges(load) {
-  const m = /* @__PURE__ */ new Map();
+  const m = /* @__PURE__ */ new Map(), courts = /* @__PURE__ */ new Map();
   for (const list of Object.values(load?.days ?? {})) {
-    for (const s of list) m.set(sittingKey(s), (m.get(sittingKey(s)) ?? 0) + s.total);
+    for (const s of list) {
+      m.set(sittingKey(s), (m.get(sittingKey(s)) ?? 0) + s.total);
+      courts.set(s.judge, (courts.get(s.judge) ?? /* @__PURE__ */ new Set()).add(s.court));
+    }
+  }
+  for (const [judge, cs] of courts) {
+    if (cs.size > 1) m.set(`${judge}|${ANY_COURT}`, [...cs].reduce((t, c) => t + (m.get(`${judge}|${c}`) ?? 0), 0));
   }
   return [...m.entries()].map(([key, total]) => ({ key, total })).sort((a, b) => b.total - a.total);
 }
@@ -13564,7 +13585,7 @@ function guessMatch(label, keys) {
 }
 const NO_CHECK = "-";
 function effectiveMap(config, load) {
-  const keys = diaryJudges(load).map((j) => j.key);
+  const keys = diaryJudges(load).map((j) => j.key).filter((k) => keyCourt(k) !== ANY_COURT);
   const saved = config.judgeDiaryMap ?? {};
   const out = {};
   for (const j of config.judges) {
@@ -13605,7 +13626,7 @@ function analyzeLoad(schedule, config, days) {
       const label = v.judgeKey ?? v.label;
       const key = map[label];
       if (!key) return;
-      const s = list.find((x) => sittingKey(x) === key);
+      const s = findSitting(list, key);
       if (!s || s.total === 0) {
         res.idleCells.set(
           `${dayIdx}-${proIdx}`,
@@ -13617,10 +13638,10 @@ function analyzeLoad(schedule, config, days) {
     });
     const out = [];
     for (const [key, labels] of labelsOf) {
-      const s = list.find((x) => sittingKey(x) === key);
+      const s = findSitting(list, key);
       if (!s || s.total === 0) continue;
       const pros = assignedTo.get(key) ?? [];
-      const ds = { key, labels, sitting: s, prosecutors: pros };
+      const ds = { key, label: displayLabel(labels), labels, sitting: s, prosecutors: pros };
       out.push(ds);
       if (pros.length === 0) res.uncovered.push({ dayIdx, ds });
       else {
@@ -13636,6 +13657,12 @@ function analyzeLoad(schedule, config, days) {
   res.proHearings = res.proHearings.map(Math.round);
   return res;
 }
+function displayLabel(labels) {
+  if (labels.length === 1) return labels[0];
+  const words = labels.map((l) => l.split(/\s+/));
+  const common = words[0].filter((w) => words.every((ws) => ws.includes(w)));
+  return common.length ? common.join(" ") : labels[0];
+}
 function breakdown(s) {
   return [
     s.arr && `הקראות ${s.arr}`,
@@ -13648,7 +13675,7 @@ function sittingsText(a, dayIdx) {
   if (!a.loadedDays.has(dayIdx)) return "";
   const list = a.perDay.get(dayIdx) ?? [];
   if (!list.length) return "אין ישיבות";
-  return list.map((ds) => `${ds.labels[0]} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ""}`).join(" · ");
+  return list.map((ds) => `${ds.label} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ""}`).join(" · ");
 }
 const DEFAULT_DIARY_COURTS = ["שלום נוף הגליל-נצרת", "שלום טבריה"];
 function sundaysOf(start, end) {
@@ -14994,7 +15021,7 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
           "🔴 ",
           shortDay(dayIdx),
           " — ",
-          ds.labels[0],
+          ds.label,
           " יושב/ת (",
           ds.sitting.total,
           " דיונים) ואין תובע"
@@ -15014,7 +15041,7 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
           "🟡 ",
           shortDay(dayIdx),
           " — ",
-          ds.labels[0],
+          ds.label,
           ": ",
           ds.sitting.total,
           " דיונים (",
@@ -15112,7 +15139,7 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
                       title: `${keyJudge(ds.key)} · ${shortCourt(keyCourt(ds.key))}
 ${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? "\nאין תובע!" : ""}`,
                       children: [
-                        ds.labels[0],
+                        ds.label,
                         " ",
                         ds.sitting.total
                       ]

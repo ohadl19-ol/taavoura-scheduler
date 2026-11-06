@@ -10,7 +10,19 @@ export const DEFAULT_BUSY_THRESHOLD = 100   // יום עמוס = 100 דיוני�
 export const sittingKey = (s: { judge: string; court: string }) => `${s.judge}|${s.court}`
 export const keyJudge = (k: string) => k.split('|')[0]
 export const keyCourt = (k: string) => k.split('|')[1] ?? ''
-export const shortCourt = (c: string) => c.replace(/^שלום\s*/, '')
+export const ANY_COURT = '*'
+export const shortCourt = (c: string) => (c === ANY_COURT ? 'כל בתי המשפט' : c.replace(/^שלום\s*/, ''))
+
+/** הישיבה של השופט ביום — לפי שופט+בית משפט, או לפי שופט בלבד ("שם|*": שופט אחד שיושב פעם כאן ופעם שם) */
+export function findSitting(list: JudgeSitting[], key: string): JudgeSitting | undefined {
+  if (keyCourt(key) !== ANY_COURT) return list.find(x => sittingKey(x) === key)
+  const all = list.filter(x => x.judge === keyJudge(key))
+  if (!all.length) return undefined
+  return all.reduce((a, b) => ({
+    judge: a.judge, court: a.court === b.court ? a.court : `${a.court} + ${b.court}`,
+    total: a.total + b.total, arr: a.arr + b.arr, proof: a.proof + b.proof, sen: a.sen + b.sen, other: a.other + b.other,
+  }))
+}
 
 const norm = (s: string) => s.replace(/["'`׳״’‘”“.‏‎]/g, '').replace(/\s+/g, ' ').trim()
 
@@ -61,11 +73,18 @@ export function mergeLoad(prev: JudgeLoad | undefined, incoming: JudgeLoad, star
 
 const sortSittings = (l: JudgeSitting[] | null) => l && [...l].sort((a, b) => sittingKey(a).localeCompare(sittingKey(b)))
 
-/** כל השופטים שמופיעים ביומן (שופט+בית משפט), עם סך הדיונים — לבחירה בהתאמה */
+/** כל השופטים שמופיעים ביומן (שופט+בית משפט), עם סך הדיונים — לבחירה בהתאמה.
+ *  שופט שמופיע ביותר מבית משפט אחד מקבל גם אפשרות "כל בתי המשפט". */
 export function diaryJudges(load: JudgeLoad | undefined): { key: string; total: number }[] {
-  const m = new Map<string, number>()
+  const m = new Map<string, number>(), courts = new Map<string, Set<string>>()
   for (const list of Object.values(load?.days ?? {})) {
-    for (const s of list) m.set(sittingKey(s), (m.get(sittingKey(s)) ?? 0) + s.total)
+    for (const s of list) {
+      m.set(sittingKey(s), (m.get(sittingKey(s)) ?? 0) + s.total)
+      courts.set(s.judge, (courts.get(s.judge) ?? new Set()).add(s.court))
+    }
+  }
+  for (const [judge, cs] of courts) {
+    if (cs.size > 1) m.set(`${judge}|${ANY_COURT}`, [...cs].reduce((t, c) => t + (m.get(`${judge}|${c}`) ?? 0), 0))
   }
   return [...m.entries()].map(([key, total]) => ({ key, total })).sort((a, b) => b.total - a.total)
 }
@@ -98,7 +117,7 @@ export const NO_CHECK = '-'
 
 /** ההתאמה בפועל: מה שנשמר בהגדרות, ולשאר — ניחוש. NO_CHECK = המשתמש בחר "לא לבדוק". */
 export function effectiveMap(config: AppConfig, load: JudgeLoad | undefined): Record<string, string> {
-  const keys = diaryJudges(load).map(j => j.key)
+  const keys = diaryJudges(load).map(j => j.key).filter(k => keyCourt(k) !== ANY_COURT)
   const saved = config.judgeDiaryMap ?? {}
   const out: Record<string, string> = {}
   for (const j of config.judges) {
@@ -114,6 +133,7 @@ export function effectiveMap(config: AppConfig, load: JudgeLoad | undefined): Re
 
 export interface DaySitting {
   key: string
+  label: string             // שם לתצוגה ("שירלי" כששתי אפשרויות מותאמות לאותה שופטת)
   labels: string[]          // השמות בסידור שמותאמים לשופט הזה
   sitting: JudgeSitting
   prosecutors: number[]     // תובעים ששובצו אליו ביום הזה
@@ -155,7 +175,7 @@ export function analyzeLoad(schedule: ScheduleData, config: AppConfig, days: Day
       const label = v.judgeKey ?? v.label
       const key = map[label]
       if (!key) return
-      const s = list.find(x => sittingKey(x) === key)
+      const s = findSitting(list, key)
       if (!s || s.total === 0) {
         res.idleCells.set(`${dayIdx}-${proIdx}`,
           `לפי נט המשפט, ${keyJudge(key)} (${shortCourt(keyCourt(key))}) לא יושב/ת ביום הזה`)
@@ -166,10 +186,10 @@ export function analyzeLoad(schedule: ScheduleData, config: AppConfig, days: Day
 
     const out: DaySitting[] = []
     for (const [key, labels] of labelsOf) {
-      const s = list.find(x => sittingKey(x) === key)
+      const s = findSitting(list, key)
       if (!s || s.total === 0) continue
       const pros = assignedTo.get(key) ?? []
-      const ds = { key, labels, sitting: s, prosecutors: pros }
+      const ds = { key, label: displayLabel(labels), labels, sitting: s, prosecutors: pros }
       out.push(ds)
       if (pros.length === 0) res.uncovered.push({ dayIdx, ds })
       else {
@@ -182,6 +202,14 @@ export function analyzeLoad(schedule: ScheduleData, config: AppConfig, days: Day
   })
   res.proHearings = res.proHearings.map(Math.round)
   return res
+}
+
+/** כמה שמות בסידור לאותו שופט ("שירלי נצרת", "שירלי טבריה") — המילים המשותפות ("שירלי") */
+function displayLabel(labels: string[]): string {
+  if (labels.length === 1) return labels[0]
+  const words = labels.map(l => l.split(/\s+/))
+  const common = words[0].filter(w => words.every(ws => ws.includes(w)))
+  return common.length ? common.join(' ') : labels[0]
 }
 
 /** פירוט קצר לסוגי דיונים */
@@ -197,5 +225,5 @@ export function sittingsText(a: LoadAnalysis, dayIdx: number): string {
   if (!a.loadedDays.has(dayIdx)) return ''
   const list = a.perDay.get(dayIdx) ?? []
   if (!list.length) return 'אין ישיבות'
-  return list.map(ds => `${ds.labels[0]} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ''}`).join(' · ')
+  return list.map(ds => `${ds.label} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ''}`).join(' · ')
 }

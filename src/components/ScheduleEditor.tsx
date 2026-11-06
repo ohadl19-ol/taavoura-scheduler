@@ -539,14 +539,14 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
           </summary>
           <ul>
             {loadInfo.uncovered.map(({ dayIdx, ds }) => (
-              <li key={`u${dayIdx}${ds.key}`}>🔴 {shortDay(dayIdx)} — {ds.labels[0]} יושב/ת ({ds.sitting.total} דיונים) ואין תובע</li>
+              <li key={`u${dayIdx}${ds.key}`}>🔴 {shortDay(dayIdx)} — {ds.label} יושב/ת ({ds.sitting.total} דיונים) ואין תובע</li>
             ))}
             {[...loadInfo.idleCells.entries()].map(([key, why]) => {
               const [d, p] = key.split('-').map(Number)
               return <li key={`i${key}`}>🟠 {shortDay(d)} — {config.prosecutors[p]}: {why}</li>
             })}
             {loadInfo.busy.map(({ dayIdx, ds }) => (
-              <li key={`b${dayIdx}${ds.key}`}>🟡 {shortDay(dayIdx)} — {ds.labels[0]}: {ds.sitting.total} דיונים ({breakdown(ds.sitting)}) עם {config.prosecutors[ds.prosecutors[0]]} בלבד</li>
+              <li key={`b${dayIdx}${ds.key}`}>🟡 {shortDay(dayIdx)} — {ds.label}: {ds.sitting.total} דיונים ({breakdown(ds.sitting)}) עם {config.prosecutors[ds.prosecutors[0]]} בלבד</li>
             ))}
           </ul>
         </details>
@@ -644,7 +644,7 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                                   className={`sit ${ds.prosecutors.length === 0 ? 'sit-uncovered' : ''}`}
                                   title={`${keyJudge(ds.key)} · ${shortCourt(keyCourt(ds.key))}\n${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? '\nאין תובע!' : ''}`}
                                 >
-                                  {ds.labels[0]} {ds.sitting.total}
+                                  {ds.label} {ds.sitting.total}
                                 </span>
                               ))}
                           </div>
