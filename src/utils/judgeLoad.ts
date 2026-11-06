@@ -131,6 +131,19 @@ export function effectiveMap(config: AppConfig, load: JudgeLoad | undefined): Re
 
 // ── ניתוח הסידור מול היומן ───────────────────────────────────────────────────
 
+/** השופט שתא בסידור מתייחס אליו. גישור הוא אותה ישיבה של השופט:
+ *  "עספור גישור", "גישור רומן", "גישורים רומן", "גישור שירלי" ← הישיבה של אותו שופט. */
+export function resolveKey(label: string, map: Record<string, string>): string | undefined {
+  if (map[label]) return map[label]
+  const rest = label.replace(/גישורים|גישור/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!rest || rest === label.trim()) return undefined
+  if (map[rest]) return map[rest]
+  // "גישור שירלי" ← "שירלי נצרת" / "שירלי טבריה" — רק אם כולם מובילים לאותו שופט
+  const words = rest.split(' ')
+  const keys = new Set(Object.entries(map).filter(([l]) => words.every(w => l.split(/\s+/).includes(w))).map(([, k]) => k))
+  return keys.size === 1 ? [...keys][0] : undefined
+}
+
 export interface DaySitting {
   key: string
   label: string             // שם לתצוגה ("שירלי" כששתי אפשרויות מותאמות לאותה שופטת)
@@ -171,9 +184,8 @@ export function analyzeLoad(schedule: ScheduleData, config: AppConfig, days: Day
     const assignedTo = new Map<string, number[]>()
     config.prosecutors.forEach((_, proIdx) => {
       const v = schedule.assignments[`${dayIdx}-${proIdx}`]
-      if (!v || v.category !== 'judge') return
-      const label = v.judgeKey ?? v.label
-      const key = map[label]
+      if (!v) return
+      const key = resolveKey(v.category === 'judge' ? (v.judgeKey ?? v.label) : v.label, map)
       if (!key) return
       const s = findSitting(list, key)
       if (!s || s.total === 0) {

@@ -13599,6 +13599,15 @@ function effectiveMap(config, load) {
   }
   return out;
 }
+function resolveKey(label, map) {
+  if (map[label]) return map[label];
+  const rest = label.replace(/גישורים|גישור/g, " ").replace(/\s+/g, " ").trim();
+  if (!rest || rest === label.trim()) return void 0;
+  if (map[rest]) return map[rest];
+  const words = rest.split(" ");
+  const keys = new Set(Object.entries(map).filter(([l]) => words.every((w) => l.split(/\s+/).includes(w))).map(([, k]) => k));
+  return keys.size === 1 ? [...keys][0] : void 0;
+}
 function analyzeLoad(schedule, config, days) {
   const load = schedule.judgeLoad;
   if (!load) return null;
@@ -13622,9 +13631,8 @@ function analyzeLoad(schedule, config, days) {
     const assignedTo = /* @__PURE__ */ new Map();
     config.prosecutors.forEach((_, proIdx) => {
       const v = schedule.assignments[`${dayIdx}-${proIdx}`];
-      if (!v || v.category !== "judge") return;
-      const label = v.judgeKey ?? v.label;
-      const key = map[label];
+      if (!v) return;
+      const key = resolveKey(v.category === "judge" ? v.judgeKey ?? v.label : v.label, map);
       if (!key) return;
       const s = findSitting(list, key);
       if (!s || s.total === 0) {
