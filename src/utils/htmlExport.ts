@@ -1,7 +1,8 @@
 import type { ScheduleData, AppConfig } from '../types'
 import { getDaysForSchedule, rangeLabel } from './dateUtils'
 
-const HE_DOW_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+const HE_DOW_SHORT = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳']
+const HE_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר']
 
 // App icon embedded as base64 PNG (180×180) for home screen / favicon
 const APP_ICON_B64 = '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' +
@@ -11,21 +12,8 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-interface Cls { type: string; badge: string | null; label: string }
-
-function classify(text: string, judges: string[]): Cls {
-  if (!text || !text.trim()) return { type: 'empty', badge: null, label: '' }
-  if (text.includes('כונן'))      return { type: 'special',   badge: 'badge-special',   label: 'כונן' }
-  if (text.includes('יום עיון'))  return { type: 'ivun',      badge: 'badge-ivun',      label: 'יום עיון' }
-  if (text.includes('ת. עצורים')) return { type: 'special',   badge: 'badge-special',   label: 'ת. עצורים' }
-  if (text.includes('מזכירות'))   return { type: 'mazkirut',  badge: 'badge-mazkirut',  label: 'מזכירות' }
-  if (text.includes('מבחן'))      return { type: 'mazkirut',  badge: 'badge-mazkirut',  label: 'מבחן' }
-  if (text.includes('ועדה'))      return { type: 'mazkirut',  badge: 'badge-mazkirut',  label: 'ועדה' }
-  for (const j of judges) {
-    if (text.includes(j)) return { type: 'raid', badge: 'badge-judge', label: j }
-  }
-  if (text.includes('משרד'))      return { type: 'mishrad',   badge: 'badge-mishrad',   label: 'משרד' }
-  return { type: 'mishrad', badge: 'badge-mishrad', label: text }
+function safeJs(v: unknown): string {
+  return JSON.stringify(v).replace(/</g, '\\x3C').replace(/>/g, '\\x3E')
 }
 
 function passwordScript(password: string): string {
@@ -49,283 +37,344 @@ function chk(){
 document.getElementById('pb').addEventListener('click',chk);
 document.getElementById('pi').addEventListener('keydown',function(e){if(e.key==='Enter')chk();});
 setTimeout(function(){document.getElementById('pi').focus();},100);
-})</\script>`
+})<\/script>`
 }
 
 export function generateHTML(schedule: ScheduleData, config: AppConfig): string {
-  const days  = getDaysForSchedule(schedule.startDate, schedule.endDate)
+  const days = getDaysForSchedule(schedule.startDate, schedule.endDate)
   const range = rangeLabel(schedule.startDate, schedule.endDate)
-  const ver   = 'גרסה ' + schedule.version
 
-  function getA(di: number, pi: number): string {
-    const v = schedule.assignments[`${di}-${pi}`]
-    return v ? v.label : ''
-  }
+  const [sy, sm] = schedule.startDate.split('-').map(Number)
+  const [, em] = schedule.endDate.split('-').map(Number)
+  const sd = Number(schedule.startDate.split('-')[2])
+  const startDateObj = new Date(sy, sm - 1, sd)
 
-  function getSub(di: number, pi: number): string {
-    return schedule.assignments[`${di}-${pi}`]?.subNote ?? ''
-  }
+  // Month label for header
+  const monthLabel = em !== sm
+    ? HE_MONTHS[sm - 1] + '–' + HE_MONTHS[em - 1]
+    : HE_MONTHS[sm - 1]
 
-  function dayDateHtml(day: { dayOfWeek: number; dayOfMonth: number }): string {
-    return (
-      '<div class="dd"><div class="dow">' + HE_DOW_NAMES[day.dayOfWeek] + '</div>'
-      + '<div class="dn">' + day.dayOfMonth + '</div></div>'
-      + '<div class="ds"></div>'
-    )
-  }
-
-  // ── Per-prosecutor sections ────────────────────────────────────────────────
-  const proSections = config.prosecutors.map((pName, pi) => {
-    let workDays = 0, courtDays = 0
-    const counts: Record<string, number> = {}
-    const cards: string[] = []
-
-    days.forEach((day, di) => {
-      const a     = getA(di, pi)
-      const cls   = classify(a, config.judges)
-      const isEmpty = !a.trim()
-      const isWE  = day.isWeekend
-
-      if (!isWE && !isEmpty) workDays++
-      if (!isWE && !isEmpty && config.judges.some(j => a.includes(j))) courtDays++
-      if (cls.label && !isWE && !isEmpty) counts[cls.label] = (counts[cls.label] ?? 0) + 1
-
-      if (isWE && isEmpty) {
-        cards.push(
-          '<div class="dc shabbat">' + dayDateHtml(day)
-          + '<div class="dc-body"><span class="dim">' + (day.dayOfWeek === 6 ? 'שבת' : 'שישי') + '</span></div></div>'
-        )
-      } else {
-        const badge = cls.badge ? '<span class="badge ' + cls.badge + '">' + esc(cls.label) + '</span>' : ''
-        const sub   = getSub(di, pi)
-        cards.push(
-          '<div class="dc type-' + cls.type + '">' + dayDateHtml(day)
-          + '<div class="dc-body"><div class="asgn">' + (a ? esc(a) : '—') + '</div>'
-          + (sub ? '<div class="asgn-sub">' + esc(sub) + '</div>' : '')
-          + badge + '</div></div>'
-        )
-      }
+  // Build D array: [dateLabel, shortDay, isoDate, [assignment strings], dayNote|null]
+  // isoDate is included so the browser can compute TODAY_IDX at runtime from new Date()
+  const dArr = days.map((day, di) => {
+    const dateLabel = day.dayOfMonth + ' ' + HE_MONTHS[day.month - 1]
+    const d = new Date(startDateObj)
+    d.setDate(d.getDate() + di)
+    const isoDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    const asgns = config.prosecutors.map((_, pi) => {
+      const v = schedule.assignments[`${di}-${pi}`]
+      if (!v || !v.label) return ''
+      return v.subNote ? v.label + '|' + v.subNote : v.label
     })
-
-    const top3 = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3)
-    const statsHtml = (
-      '<div class="sb">'
-      + '<div class="sc"><div class="sn">' + workDays + '</div><div class="sl">ימי עבודה</div></div>'
-      + '<div class="sc"><div class="sn g">' + courtDays + '</div><div class="sl">ימי ב״מ</div></div>'
-      + top3.map(([l, n]) => '<div class="sc"><div class="sn s">' + n + '</div><div class="sl">' + esc(l) + '</div></div>').join('')
-      + '</div>'
-    )
-
-    return (
-      '<section id="pro-' + pi + '" class="sec">'
-      + '<div class="sh"><h2 class="st">👤 ' + esc(pName) + '</h2>'
-      + '<a href="#top" class="back">הצג הכל ↑</a></div>'
-      + statsHtml
-      + '<div class="mv">' + cards.join('') + '</div>'
-      + '</section>'
-    )
+    return [dateLabel, HE_DOW_SHORT[day.dayOfWeek], isoDate, asgns, schedule.dayNotes?.[di] ?? null]
   })
 
-  // ── Per-judge sections ─────────────────────────────────────────────────────
-  const judgeSections: string[] = []
-  config.judges.forEach((jName, ji) => {
-    const cards: string[] = []
+  const css = `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{min-height:100%;font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f0f2f5;--surface:#ffffff;--surface2:#f8fafc;--border:#e5e7eb;
+  --text:#1a1a2e;--text2:#4a5568;--text3:#94a3b8;
+  --hdr-bg:#1a1a2e;--strip-bg:#1a1a2e;
+  --tab-act:#4f46e5;--tab-txt:#64748b;
+  --chip-bg:#252d42;--chip-txt:#8892b0;
+  --chip-sel-bg:#312e81;--chip-sel-txt:#c7d2fe;
+  --chip-ring:#818cf8;--chip-we:0.4;
+  --det-bg:#fee2e2;--det-tx:#991b1b;--det-bar:#dc2626;
+  --crt-bg:#f0fdf4;--crt-tx:#14532d;--crt-bar:#16a34a;
+  --onc-bg:#f0fdfa;--onc-tx:#0f766e;--onc-bar:#0d9488;
+  --ofc-bg:#eef2ff;--ofc-tx:#3730a3;--ofc-bar:#4f46e5;
+  --off-bg:#f3f4f6;--off-tx:#4b5563;--off-bar:#9ca3af;
+  --oth-bg:#faf5ff;--oth-tx:#6b21a8;--oth-bar:#8b5cf6;
+  --today-bg:#eef2ff;--today-bdr:#4f46e5;
+  --hdr-h:72px;
+}
+#hdr{position:sticky;top:0;z-index:60;background:var(--hdr-bg);padding:env(safe-area-inset-top,0px) 0 0}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0}
+.hdr-title{color:#f1f5f9;font-size:.98rem;font-weight:700;letter-spacing:-.01em}
+.hdr-meta{color:#4a5e7a;font-size:.7rem;margin-top:2px}
+.tabs{display:flex;margin:10px 12px 0;background:#0d1117;border-radius:10px 10px 0 0;padding:3px 3px 0;gap:2px}
+.tab{flex:1;padding:9px 6px 10px;background:transparent;color:var(--tab-txt);font-size:.84rem;font-weight:600;border-radius:8px 8px 0 0;min-height:44px;transition:background .15s,color .15s}
+.tab.on{background:var(--bg);color:var(--tab-act)}
+#strip{position:sticky;top:var(--hdr-h);z-index:50;background:var(--strip-bg);display:flex;gap:5px;overflow-x:auto;padding:7px 12px 9px;scrollbar-width:none;align-items:center}
+#strip::-webkit-scrollbar{display:none}
+.chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 9px;border-radius:9px;cursor:pointer;flex-shrink:0;min-width:44px;min-height:44px;gap:1px;background:var(--chip-bg);color:var(--chip-txt);font-size:.68rem;font-weight:600;border:2px solid transparent;transition:background .1s,color .1s}
+.chip .dn{font-size:1rem;font-weight:800;line-height:1.1}
+.chip.today-chip{border-color:var(--chip-ring)}
+.chip.sel{background:var(--chip-sel-bg);color:var(--chip-sel-txt)}
+.chip.we{opacity:var(--chip-we)}
+.panel{display:none}.panel.on{display:block}
+.day-body{padding:12px 12px 32px}
+.day-meta{font-size:.76rem;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.day-meta.is-today{color:var(--tab-act);font-weight:700}
+.today-dot{width:7px;height:7px;border-radius:50%;background:var(--tab-act)}
+.note-banner{background:#fef3c7;border:1px solid #fde68a;color:#78350f;border-radius:10px;padding:8px 12px;font-size:.8rem;margin-bottom:10px;display:flex;align-items:flex-start;gap:7px}
+.cat-group{margin-bottom:9px}
+.cat-hd{display:flex;align-items:center;gap:6px;padding:5px 2px;font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.cat-dot-sm{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-cnt{background:var(--border);color:var(--text3);border-radius:20px;padding:1px 7px;font-size:.65rem;font-weight:700}
+.pcard{background:var(--surface);border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.prow{display:flex;align-items:center;min-height:48px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.prow:last-child{border-bottom:none}
+.bar{width:4px;height:100%;position:absolute;right:0;top:0;flex-shrink:0}
+.pname{padding:10px 12px 10px 6px;font-size:.88rem;color:var(--text2);min-width:70px;flex-shrink:0}
+.prow.det .pname{font-weight:700;color:var(--text)}
+.pval{flex:1;padding:10px 0 10px 12px;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.vtag{font-size:.86rem;font-weight:600;padding:3px 11px;border-radius:20px;white-space:nowrap}
+.ntag{font-size:.7rem;padding:2px 8px;border-radius:20px;background:var(--border);color:var(--text2);white-space:nowrap}
+.det .bar{background:var(--det-bar)}.det .vtag{background:var(--det-bg);color:var(--det-tx)}
+.crt .bar{background:var(--crt-bar)}.crt .vtag{background:var(--crt-bg);color:var(--crt-tx)}
+.onc .bar{background:var(--onc-bar)}.onc .vtag{background:var(--onc-bg);color:var(--onc-tx)}
+.ofc .bar{background:var(--ofc-bar)}.ofc .vtag{background:var(--ofc-bg);color:var(--ofc-tx)}
+.off .bar{background:var(--off-bar)}.off .vtag{background:var(--off-bg);color:var(--off-tx)}
+.oth .bar{background:var(--oth-bar)}.oth .vtag{background:var(--oth-bg);color:var(--oth-tx)}
+.unassigned{margin-top:8px;background:var(--surface);border-radius:10px;padding:10px 13px;font-size:.82rem;color:var(--text3);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.unassigned strong{color:var(--text2)}
+.empty-day{text-align:center;padding:40px 16px;color:var(--text3)}
+.empty-day .eico{font-size:2.4rem;margin-bottom:10px}
+.empty-day p{font-size:.88rem}
+.pers-body{padding:12px 12px 32px}
+.pro-strip{display:flex;overflow-x:auto;gap:7px;padding-bottom:12px;scrollbar-width:none}
+.pro-strip::-webkit-scrollbar{display:none}
+.pro-chip{flex-shrink:0;padding:9px 16px;border-radius:20px;font-size:.84rem;font-weight:600;min-height:40px;background:var(--surface);color:var(--text2);border:2px solid var(--border);transition:background .1s,border-color .1s,color .1s}
+.pro-chip.sel{background:var(--tab-act);color:#fff;border-color:var(--tab-act)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.sbox{background:var(--surface);border-radius:12px;padding:13px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sn{font-size:1.55rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.sl{font-size:.63rem;color:var(--text3);margin-top:4px}
+.sn.b{color:#4f46e5}.sn.g{color:#16a34a}.sn.r{color:#dc2626}
+.dlist{display:flex;flex-direction:column;gap:4px}
+.drow{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:10px 12px;min-height:48px;border:2px solid transparent}
+.drow.is-today{border-color:var(--today-bdr);background:var(--today-bg)}
+.drow.we{opacity:.45}
+.ddate{min-width:54px;font-size:.77rem;font-weight:700;color:var(--text2);flex-shrink:0}
+.dtag{font-size:.82rem;font-weight:600;padding:3px 11px;border-radius:16px}
+.dempty{color:var(--text3);font-size:.85rem}
+.today-lbl{font-size:.6rem;color:var(--tab-act);font-weight:700;display:block;margin-top:1px}
+.det .dtag{background:var(--det-bg);color:var(--det-tx)}
+.crt .dtag{background:var(--crt-bg);color:var(--crt-tx)}
+.onc .dtag{background:var(--onc-bg);color:var(--onc-tx)}
+.ofc .dtag{background:var(--ofc-bg);color:var(--ofc-tx)}
+.off .dtag{background:var(--off-bg);color:var(--off-tx)}
+.oth .dtag{background:var(--oth-bg);color:var(--oth-tx)}
+.tbl-panel{display:flex;flex-direction:column;height:calc(100vh - var(--hdr-h,72px));padding:0}
+.tbl-hint{flex-shrink:0;padding:8px 14px 6px;font-size:.73rem;color:var(--text3);display:flex;align-items:center;gap:4px}
+.tbl-outer{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+table{border-collapse:separate;border-spacing:0;font-size:.78rem;white-space:nowrap}
+thead th{position:sticky;top:0;z-index:22;background:var(--hdr-bg);color:#64748b;padding:10px 14px;font-weight:600;font-size:.7rem;border-bottom:2px solid #1e2a3a}
+th:first-child,td:first-child{position:sticky;right:0;background:var(--surface);border-left:1px solid var(--border)}
+th:first-child{z-index:32;background:var(--hdr-bg);color:#4a5e7a}
+td:first-child{z-index:12;font-weight:700;color:var(--text2)}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text2)}
+.tc-det{background:var(--det-bg)!important;color:var(--det-tx)!important;font-weight:700}
+.tc-crt{background:var(--crt-bg)!important;color:var(--crt-tx)!important}
+.tc-onc{background:var(--onc-bg)!important;color:var(--onc-tx)!important}
+.tc-ofc{background:var(--ofc-bg)!important;color:var(--ofc-tx)!important}
+.tc-off{background:var(--off-bg)!important;color:var(--off-tx)!important}
+.tc-oth{background:var(--oth-bg)!important;color:var(--oth-tx)!important}
+.tc-we{background:var(--surface2)!important;color:var(--text3)!important;font-style:italic}
+.tc-mt{color:var(--text3)}
+tr.tr-today td{background:var(--today-bg)!important}
+tr.tr-today .tc-det{background:var(--det-bg)!important;color:var(--det-tx)!important}
+tr.tr-today .tc-crt{background:var(--crt-bg)!important;color:var(--crt-tx)!important}
+tr.tr-today .tc-onc{background:var(--onc-bg)!important;color:var(--onc-tx)!important}
+tr.tr-today .tc-ofc{background:var(--ofc-bg)!important;color:var(--ofc-tx)!important}
+tr.tr-today .tc-off{background:var(--off-bg)!important;color:var(--off-tx)!important}
+tr.tr-today .tc-oth{background:var(--oth-bg)!important;color:var(--oth-tx)!important}
+tr.tr-today td:first-child{background:var(--today-bg)!important;border-right:3px solid var(--today-bdr)}
+tr.tr-we{opacity:.5}
+.td-dt-n{font-size:.88rem;font-weight:700;color:var(--text)}
+.td-dt-s{font-size:.65rem;color:var(--text3);margin-top:1px;font-weight:400}
+.td-note-s{font-size:.6rem;color:#92400e;margin-top:2px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;padding:13px 14px 0;border-top:1px solid var(--border);margin-top:10px}
+.lgi{display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--text2)}
+.lgd{width:10px;height:10px;border-radius:50%;flex-shrink:0}`
 
-    days.forEach((day, di) => {
-      const prosHere: string[] = []
-      config.prosecutors.forEach((pName, pi) => {
-        const a = getA(di, pi)
-        if (a && a.includes(jName)) prosHere.push(pName)
-      })
-      if (!prosHere.length) return
+  const js = `const PEOPLE=${safeJs(config.prosecutors)};
+const JUDGES=${safeJs(config.judges)};
+const D=${safeJs(dArr)};
+const _now=new Date();
+const todayISO=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+const TODAY_IDX=D.findIndex(function(r){return r[2]===todayISO;});
+const FULL={'א׳':'ראשון','ב׳':'שני','ג׳':'שלישי','ד׳':'רביעי','ה׳':'חמישי','ו׳':'שישי','ש׳':'שבת'};
+const WE=new Set(['ו׳','ש׳']);
+const CAT_ORDER=['crt','det','onc','ofc','oth','off'];
+const CAT_META={det:{label:'ת. עצורים',dot:'var(--det-bar)'},crt:{label:'בית משפט',dot:'var(--crt-bar)'},onc:{label:'כוננות',dot:'var(--onc-bar)'},ofc:{label:'משרד',dot:'var(--ofc-bar)'},off:{label:'היעדרות',dot:'var(--off-bar)'},oth:{label:'אחר',dot:'var(--oth-bar)'}};
+const OFF_VALS=new Set(['חופש','מחלה','יום משפחות']);
+const OFC_VALS=new Set(['משרד','ממונה משרד','ממונה בית משפט','פגישות משרד','ח"ש']);
+function classify(raw){
+  const[v,...rest]=raw.split('|');const val=v.trim();const note=rest.join('|').trim();
+  if(!val)return{cat:'empty',val:'',note:''};
+  if(val==='ת. עצורים')return{cat:'det',val,note};
+  if(val==='כונן בית משפט'||val==='כונן')return{cat:'onc',val,note};
+  for(const j of JUDGES)if(val.includes(j))return{cat:'crt',val,note};
+  if(OFF_VALS.has(val))return{cat:'off',val,note};
+  if(OFC_VALS.has(val)||val.includes('משרד'))return{cat:'ofc',val,note};
+  return{cat:'oth',val,note};
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+let dayIdx=TODAY_IDX>=0?TODAY_IDX:0;
+let perIdx=+(localStorage.getItem('sp')||0);
+if(perIdx>=PEOPLE.length)perIdx=0;
+let tblBuilt=false;
+function buildStrip(){
+  document.getElementById('strip').innerHTML=D.map(([,s],i)=>{
+    const we=WE.has(s),tod=i===TODAY_IDX,sel=i===dayIdx;
+    const n=D[i][0].split(' ')[0];
+    const cls=['chip',we?'we':'',tod?'today-chip':'',sel?'sel':''].filter(Boolean).join(' ');
+    return '<div class="'+cls+'" onclick="selDay('+i+')"><span class="dn">'+n+'</span><span>'+s+'</span></div>';
+  }).join('');
+}
+function centerChip(){
+  const strip=document.getElementById('strip');
+  const sel=strip.children[dayIdx];
+  if(!sel)return;
+  strip.scrollLeft=sel.offsetLeft-strip.offsetWidth/2+sel.offsetWidth/2;
+}
+function renderDay(){
+  const[dt,short,,asgns,note]=D[dayIdx];
+  const we=WE.has(short),tod=dayIdx===TODAY_IDX;
+  let out='';
+  if(tod)out+='<div class="day-meta is-today"><div class="today-dot"></div>היום, '+esc(dt)+'</div>';
+  else out+='<div class="day-meta">'+esc(dt)+' · יום '+esc(FULL[short])+'</div>';
+  if(note)out+='<div class="note-banner">📌 '+esc(note)+'</div>';
+  if(we&&asgns.every(a=>!a.trim())){
+    out+='<div class="empty-day"><div class="eico">🌅</div><p>'+(short==='ש׳'?'שבת שלום':'שישי')+'</p></div>';
+    document.getElementById('day-bd').innerHTML=out;return;
+  }
+  const groups={},unassigned=[];
+  asgns.forEach((raw,pi)=>{
+    const cl=classify(raw);
+    if(!cl.val){if(!we)unassigned.push(PEOPLE[pi]);return;}
+    (groups[cl.cat]=groups[cl.cat]||[]).push({name:PEOPLE[pi],...cl});
+  });
+  const cats=CAT_ORDER.filter(c=>groups[c]);
+  if(!cats.length&&!we)out+='<div class="empty-day"><div class="eico">📭</div><p>אין שיבוצים ליום זה</p></div>';
+  cats.forEach(cat=>{
+    const meta=CAT_META[cat],rows=groups[cat];
+    out+='<div class="cat-group"><div class="cat-hd"><span class="cat-dot-sm" style="background:'+meta.dot+'"></span><span>'+meta.label+'</span><span class="cat-cnt">'+rows.length+'</span></div><div class="pcard">';
+    rows.forEach(r=>{
+      out+='<div class="prow '+cat+'"><div class="bar"></div><div class="pname">'+esc(r.name)+'</div><div class="pval"><span class="vtag">'+esc(r.val)+'</span>'+(r.note?'<span class="ntag">📎 '+esc(r.note)+'</span>':'')+'</div></div>';
+    });
+    out+='</div></div>';
+  });
+  if(unassigned.length)out+='<div class="unassigned"><strong>ללא שיבוץ:</strong> '+unassigned.map(esc).join(' · ')+'</div>';
+  document.getElementById('day-bd').innerHTML=out;
+}
+function renderPersonal(){
+  const pi=perIdx;let work=0,court=0,abs=0;
+  D.forEach(([,s,,a])=>{
+    if(WE.has(s))return;
+    const cl=classify(a[pi]);if(!cl.val)return;
+    work++;if(cl.cat==='crt')court++;if(cl.cat==='off')abs++;
+  });
+  let out='<div class="pro-strip">';
+  PEOPLE.forEach((p,i)=>{out+='<button class="pro-chip'+(i===pi?' sel':'')+'" onclick="selPer('+i+')">'+esc(p)+'</button>';});
+  out+='</div><div class="stats"><div class="sbox"><div class="sn b">'+work+'</div><div class="sl">ימי עבודה</div></div><div class="sbox"><div class="sn g">'+court+'</div><div class="sl">ימי ב״מ</div></div><div class="sbox"><div class="sn r">'+abs+'</div><div class="sl">היעדרויות</div></div></div><div class="dlist">';
+  D.forEach(([dt,short,,asgns],i)=>{
+    const we=WE.has(short),tod=i===TODAY_IDX;
+    const cl=classify(asgns[pi]);
+    const rowCls=['drow',tod?'is-today':'',we?'we':'',cl.cat&&cl.cat!=='empty'?cl.cat:''].filter(Boolean).join(' ');
+    const valHtml=cl.val?'<span class="dtag">'+esc(cl.val)+(cl.note?' · '+esc(cl.note):'')+'</span>':'<span class="dempty">'+(we?(short==='ש׳'?'שבת':'שישי'):'—')+'</span>';
+    out+='<div class="'+rowCls+'"><div class="ddate">'+esc(dt.split(' ')[0])+' '+short+(tod?'<span class="today-lbl">היום</span>':'')+'</div><div>'+valHtml+'</div></div>';
+  });
+  out+='</div>';
+  document.getElementById('per-bd').innerHTML=out;
+}
+function renderTable(){
+  if(tblBuilt)return;tblBuilt=true;
+  let out='<div class="tbl-hint">↔ גלול לצדדים — עמודת התאריך נשארת</div><div class="tbl-outer"><table><thead><tr><th>תאריך</th>'+PEOPLE.map(p=>'<th>'+esc(p)+'</th>').join('')+'</tr></thead><tbody>';
+  D.forEach(([dt,short,,asgns,note],i)=>{
+    const we=WE.has(short),tod=i===TODAY_IDX;
+    const trCls=tod?'tr-today':we?'tr-we':'';
+    out+='<tr'+(trCls?' class="'+trCls+'"':'')+'>'+
+      '<td><div class="td-dt-n">'+esc(dt)+'</div><div class="td-dt-s">יום '+esc(FULL[short])+(tod?' · <strong>היום</strong>':'')+'</div>'+(note?'<div class="td-note-s">📌 '+esc(note)+'</div>':'')+'</td>';
+    asgns.forEach(raw=>{
+      const cl=classify(raw);
+      let cls='tc-mt';
+      if(we)cls='tc-we';else if(cl.cat&&cl.cat!=='empty')cls='tc-'+cl.cat;
+      const disp=cl.val?esc(cl.val)+(cl.note?'<div style="font-size:.6rem;opacity:.75">'+esc(cl.note)+'</div>':''):(we?(short==='ש׳'?'שבת':'שישי'):'');
+      out+='<td class="'+cls+'">'+disp+'</td>';
+    });
+    out+='</tr>';
+  });
+  out+='</tbody></table></div>';
+  document.getElementById('tbl-bd').innerHTML=out;
+}
+function selDay(i){
+  dayIdx=i;
+  document.querySelectorAll('#strip .chip').forEach((c,j)=>{c.classList.toggle('sel',j===i);});
+  centerChip();renderDay();
+}
+function selPer(i){perIdx=i;localStorage.setItem('sp',i);renderPersonal();}
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
+  document.querySelectorAll('.panel').forEach(el=>el.classList.toggle('on',el.id==='tab-'+t));
+  document.getElementById('strip').style.display=t==='day'?'flex':'none';
+  if(t==='day'){renderDay();centerChip();}
+  if(t==='personal')renderPersonal();
+  if(t==='table')renderTable();
+  setHdrH();
+}
+function setHdrH(){document.documentElement.style.setProperty('--hdr-h',document.getElementById('hdr').offsetHeight+'px');}
+let tx0=null;
+const dp=document.getElementById('tab-day');
+dp.addEventListener('touchstart',e=>{tx0=e.touches[0].clientX;},{passive:true});
+dp.addEventListener('touchend',e=>{
+  if(tx0===null)return;
+  const dx=e.changedTouches[0].clientX-tx0;tx0=null;
+  if(Math.abs(dx)<50)return;
+  const ni=dx>0?dayIdx-1:dayIdx+1;
+  if(ni>=0&&ni<D.length)selDay(ni);
+},{passive:true});
+setHdrH();buildStrip();renderDay();centerChip();
+window.addEventListener('resize',setHdrH);`
 
-      cards.push(
-        '<div class="dc type-raid">' + dayDateHtml(day)
-        + '<div class="dc-body">' + prosHere.map(p => '<span class="ptag">' + esc(p) + '</span>').join(' ') + '</div>'
-        + '</div>'
-      )
-    })
+  const body = [
+    '<header id="hdr">',
+    '  <div class="hdr-top">',
+    '    <div>',
+    `      <div class="hdr-title">📋 ${esc(range)}</div>`,
+    `      <div class="hdr-meta">גרסה ${schedule.version} · ${esc(config.unit_name)}</div>`,
+    '    </div>',
+    '  </div>',
+    '  <div style="padding:0 12px">',
+    '    <nav class="tabs">',
+    '      <button class="tab on" data-t="day" onclick="switchTab(\'day\')">יום</button>',
+    '      <button class="tab" data-t="personal" onclick="switchTab(\'personal\')">אישי</button>',
+    '      <button class="tab" data-t="table" onclick="switchTab(\'table\')">טבלה מלאה</button>',
+    '    </nav>',
+    '  </div>',
+    '</header>',
+    '<div id="strip"></div>',
+    '<main>',
+    '  <div id="tab-day" class="panel on"><div class="day-body" id="day-bd"></div></div>',
+    '  <div id="tab-personal" class="panel"><div class="pers-body" id="per-bd"></div></div>',
+    '  <div id="tab-table" class="panel"><div class="tbl-panel" id="tbl-bd"></div></div>',
+    '</main>',
+  ].join('\n')
 
-    if (!cards.length) return
-
-    judgeSections.push(
-      '<section id="judge-' + ji + '" class="sec">'
-      + '<div class="sh"><h2 class="st">⚖️ ' + esc(jName) + '</h2>'
-      + '<a href="#top" class="back">הצג הכל ↑</a></div>'
-      + '<div class="jdays">' + cards.length + ' ימי דיון</div>'
-      + '<div class="mv">' + cards.join('') + '</div>'
-      + '</section>'
-    )
-  })
-
-  // ── Full table (id="top") ─────────────────────────────────────────────────
-  const thCells = config.prosecutors.map(p => '<th class="th-p">' + esc(p) + '</th>').join('')
-  const trRows  = days.map((day, di) => {
-    const isWE = day.isWeekend
-    const tds  = config.prosecutors.map((_, pi) => {
-      const a   = getA(di, pi)
-      const sub = getSub(di, pi)
-      const cls = classify(a, config.judges)
-      return '<td class="' + (isWE ? 'td-we' : 'td-' + cls.type) + '">'
-        + (a ? esc(a) : '')
-        + (sub ? '<div class="td-sub">' + esc(sub) + '</div>' : '')
-        + '</td>'
-    }).join('')
-    const note = schedule.dayNotes?.[di]
-    return (
-      '<tr class="' + (isWE ? 'tr-we' : '') + '">'
-      + '<td class="td-dt"><b>' + day.dayOfMonth + '</b> ' + HE_DOW_NAMES[day.dayOfWeek]
-      + (note ? '<div class="td-note">' + esc(note) + '</div>' : '')
-      + '</td>'
-      + tds + '</tr>'
-    )
-  }).join('')
-
-  // ── Navigation buttons ─────────────────────────────────────────────────────
-  const proBtns   = config.prosecutors.map((p, i) => '<a href="#pro-'   + i + '" class="nb np">' + esc(p) + '</a>').join('\n      ')
-  const judgeBtns = config.judges.map((j, i)      => '<a href="#judge-' + i + '" class="nb nj">' + esc(j) + '</a>').join('\n      ')
-
-  // ── CSS (zero JavaScript, pure styling) ───────────────────────────────────
-  const css = `
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;padding-bottom:40px}
-a{text-decoration:none;color:inherit}
-
-/* ── home screen tip bar ── */
-.home-tip{display:flex;align-items:center;justify-content:space-between;background:#1e3a5f;border-bottom:2px solid #f0c040;padding:10px 14px;gap:10px}
-.home-tip-text{color:#fff;font-size:.78rem;line-height:1.5;flex:1}
-.home-tip-close{background:none;border:none;color:#8892b0;font-size:1rem;cursor:pointer;padding:0 4px;flex-shrink:0}
-
-/* ── top section (nav + full table) ── */
-#top{background:#1a1a2e;padding:16px 16px 20px}
-.hdr{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.htitle{color:#fff;font-size:1.05rem;font-weight:800}
-.hmeta{color:#8892b0;font-size:.75rem;margin-top:2px}
-.nav{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
-.ng{display:flex;flex-direction:column;gap:6px}
-.nl{color:#8892b0;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.nb{display:inline-block;padding:8px 16px;border-radius:22px;font-size:.85rem;font-weight:700;white-space:nowrap;margin:3px 3px 3px 0;-webkit-tap-highlight-color:transparent}
-.np{background:#312e81;color:#c7d2fe}
-.nj{background:#064e3b;color:#6ee7b7}
-.ft-hdr{color:#fff;font-size:.95rem;font-weight:700;margin-bottom:10px}
-.ft-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
-.ft{width:100%;border-collapse:collapse;font-size:.8rem;background:#fff;min-width:320px}
-.ft th,.ft td{padding:7px 10px;border-bottom:1px solid #f3f4f6;text-align:right;white-space:nowrap}
-.th-d{background:#0f172a;color:#94a3b8;width:90px;font-weight:600;font-size:.75rem}
-.th-p{background:#0f172a;color:#c7d2fe;font-weight:600;font-size:.75rem}
-.td-dt{font-weight:700;color:#374151;background:#f8fafc}
-.tr-we .td-dt{color:#9ca3af}
-.td-we{color:#9ca3af;font-style:italic}
-.td-mishrad{color:#4338ca}
-.td-raid{color:#059669;font-weight:600}
-.td-mazkirut{color:#be185d}
-.td-ivun{color:#7c3aed}
-.td-special{color:#dc2626;font-weight:600}
-.td-empty{color:#d1d5db}
-
-/* ── content sections ── */
-.sec{padding:16px;max-width:680px;margin:0 auto}
-.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
-.st{font-size:1.05rem;font-weight:800;color:#1a1a2e}
-.back{font-size:.78rem;color:#6366f1;font-weight:700;padding:6px 12px;background:#ede9fe;border-radius:20px;-webkit-tap-highlight-color:transparent}
-.jdays{font-size:.8rem;color:#6b7280;margin-bottom:10px}
-
-/* ── stats bar ── */
-.sb{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.sc{background:#fff;border-radius:10px;padding:10px 12px;flex:1;min-width:60px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-align:center}
-.sn{font-size:1.35rem;font-weight:800;color:#2563eb;line-height:1}
-.sn.g{color:#10b981}
-.sn.s{color:#f59e0b}
-.sl{font-size:.63rem;color:#9ca3af;margin-top:3px}
-
-/* ── day cards ── */
-.mv{display:flex;flex-direction:column;gap:5px}
-.dc{background:#fff;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-right:4px solid #e5e7eb}
-.dc.shabbat{background:#f9fafb;border-right-color:#d1d5db;opacity:.5}
-.dc.type-mishrad{border-right-color:#6366f1}
-.dc.type-raid{border-right-color:#10b981}
-.dc.type-mazkirut{border-right-color:#ec4899}
-.dc.type-ivun{border-right-color:#8b5cf6}
-.dc.type-special{border-right-color:#ef4444}
-.dc.type-empty{border-right-color:#e5e7eb}
-.dd{min-width:44px;text-align:center;flex-shrink:0}
-.dow{font-size:.62rem;color:#9ca3af;font-weight:600}
-.dn{font-size:1.2rem;font-weight:800;line-height:1.1}
-.ds{width:1px;height:30px;background:#f3f4f6;flex-shrink:0}
-.dc-body{flex:1;min-width:0}
-.asgn{font-size:.93rem;font-weight:700}
-.asgn-sub{font-size:.72rem;color:#6b7280;margin-top:2px}
-.td-sub{font-size:.68rem;color:#6b7280;margin-top:1px}
-.td-note{font-size:.65rem;color:#92400e;background:#fef3c7;border-radius:3px;padding:1px 4px;margin-top:2px;white-space:normal}
-.dim{font-size:.85rem;color:#9ca3af}
-.badge{font-size:.62rem;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-top:3px;white-space:nowrap}
-.badge-mishrad{background:#ede9fe;color:#5b21b6}
-.badge-raid{background:#d1fae5;color:#065f46}
-.badge-mazkirut{background:#fce7f3;color:#9d174d}
-.badge-ivun{background:#ede9fe;color:#6b21a8}
-.badge-special{background:#fee2e2;color:#991b1b}
-.badge-judge{background:#fef9c3;color:#854d0e}
-.ptag{display:inline-block;background:#dbeafe;color:#1e40af;border-radius:12px;padding:3px 9px;font-size:.78rem;font-weight:600;margin:2px}
-
-/* ── divider ── */
-.div{height:1px;background:#e5e7eb;margin:0 16px}
-  `.trim()
-
-  const sectionsHtml = [
-    ...proSections,
-    ...judgeSections,
-  ].join('\n<div class="div"></div>\n')
-
-  return (
-    '<!DOCTYPE html>\n'
-    + '<html lang="he" dir="rtl">\n'
-    + '<head>\n'
-    + '<meta charset="UTF-8">\n'
-    + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-    + '<title>סידור עבודה</title>\n'
-    + '<meta property="og:title" content="סידור עבודה">\n'
-    + '<meta property="og:description" content="' + esc(config.unit_name) + '">\n'
-    + '<link rel="apple-touch-icon" href="data:image/png;base64,' + APP_ICON_B64 + '">\n'
-    + '<link rel="icon" type="image/png" href="data:image/png;base64,' + APP_ICON_B64 + '">\n'
-    + '<meta name="apple-mobile-web-app-capable" content="yes">\n'
-    + '<meta name="apple-mobile-web-app-title" content="סידור עבודה">\n'
-    + '<style>\n' + css + '\n</style>\n'
-    + (config.schedulePassword ? passwordScript(config.schedulePassword) + '\n' : '')
-    + '</head>\n'
-    + '<body>\n'
-
-    // ── id="top" = navigation + full table ──
-    + '<div id="top">\n'
-    + '  <div class="home-tip" id="home-tip">'
-    + '<span class="home-tip-text">💡 <strong>שמור על מסך הבית:</strong> iOS — לחץ שתף ← "הוסף למסך הבית" | Android — תפריט ← "הוסף למסך הבית"</span>'
-    + '<button onclick="document.getElementById(\'home-tip\').style.display=\'none\'" class="home-tip-close">✕</button>'
-    + '</div>\n'
-    + '  <div class="hdr">\n'
-    + '    <div><div class="htitle">📋 סידור ' + esc(range) + '</div>'
-    + '<div class="hmeta">' + ver + ' · ' + esc(config.unit_name) + '</div></div>\n'
-    + '  </div>\n'
-    + '  <div class="nav">\n'
-    + '    <div class="ng"><div class="nl">לפי תובע</div>\n'
-    + '      ' + proBtns + '\n'
-    + '    </div>\n'
-    + (config.judges.length > 0
-        ? '    <div class="ng"><div class="nl">לפי שופט</div>\n'
-          + '      ' + judgeBtns + '\n'
-          + '    </div>\n'
-        : '')
-    + '  </div>\n'
-    + '  <div class="ft-hdr">📊 טבלה מלאה</div>\n'
-    + '  <div class="ft-wrap">\n'
-    + '    <table class="ft">\n'
-    + '      <thead><tr><th class="th-d">תאריך</th>' + thCells + '</tr></thead>\n'
-    + '      <tbody>' + trRows + '</tbody>\n'
-    + '    </table>\n'
-    + '  </div>\n'
-    + '</div>\n'
-
-    // ── Per-prosecutor + per-judge sections ──
-    + sectionsHtml
-    + '\n</body>\n'
-    + '</html>'
-  )
+  return [
+    '<!DOCTYPE html>',
+    '<html lang="he" dir="rtl">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">',
+    '<title>סידור עבודה</title>',
+    '<meta property="og:title" content="סידור עבודה">',
+    `<meta property="og:description" content="${esc(config.unit_name)}">`,
+    `<link rel="apple-touch-icon" href="data:image/png;base64,${APP_ICON_B64}">`,
+    `<link rel="icon" type="image/png" href="data:image/png;base64,${APP_ICON_B64}">`,
+    '<meta name="apple-mobile-web-app-capable" content="yes">',
+    '<meta name="apple-mobile-web-app-title" content="סידור עבודה">',
+    `<style>${css}</style>`,
+    config.schedulePassword ? passwordScript(config.schedulePassword) : '',
+    '</head>',
+    '<body>',
+    body,
+    '<script>' + js + '<' + '/script>',
+    '</body>',
+    '</html>',
+  ].join('\n')
 }

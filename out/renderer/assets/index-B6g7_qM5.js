@@ -12501,6 +12501,9 @@ function useSchedule(id) {
       }
       setHistoryVersion((v) => v + 1);
     });
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [id]);
   const persist = reactExports.useCallback((data) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -12580,15 +12583,24 @@ function SettingsScreen({ onDone }) {
   const [prosecutors, setProsecutors] = reactExports.useState([]);
   const [judges, setJudges] = reactExports.useState([]);
   const [generalOptions, setGeneralOptions] = reactExports.useState([]);
+  const [constraintsScriptUrl, setConstraintsScriptUrl] = reactExports.useState("");
+  const [schedulePassword, setSchedulePassword] = reactExports.useState("");
+  const [githubToken, setGithubToken] = reactExports.useState("");
   const [newProsecutor, setNewProsecutor] = reactExports.useState("");
   const [newJudge, setNewJudge] = reactExports.useState("");
   const [newOption, setNewOption] = reactExports.useState("");
   const [saved, setSaved] = reactExports.useState(false);
   const [dragIdx, setDragIdx] = reactExports.useState(null);
   const [dragOver, setDragOver] = reactExports.useState(null);
+  const [optDragIdx, setOptDragIdx] = reactExports.useState(null);
+  const [optDragOver, setOptDragOver] = reactExports.useState(null);
+  const [storage, setStorage] = reactExports.useState(null);
   reactExports.useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+  reactExports.useEffect(() => {
+    window.api.storage.info().then(setStorage);
+  }, []);
   reactExports.useEffect(() => {
     if (config) {
       setUnitName(config.unit_name);
@@ -12596,14 +12608,22 @@ function SettingsScreen({ onDone }) {
       setProsecutors(config.prosecutors);
       setJudges(config.judges);
       setGeneralOptions(config.generalOptions ?? GENERAL_OPTIONS);
+      setConstraintsScriptUrl(config.constraintsScriptUrl ?? "");
+      setSchedulePassword(config.schedulePassword ?? "");
+      setGithubToken(config.githubToken ?? "");
     }
   }, [config]);
   const currentData = () => ({
+    ...config ?? {},
+    // שומר שדות שלא נערכים במסך הזה (התאמת יומן שופטים וכו')
     unit_name: unitName,
     branch,
     prosecutors,
     judges,
-    generalOptions
+    generalOptions,
+    constraintsScriptUrl: constraintsScriptUrl.trim() || void 0,
+    schedulePassword: schedulePassword.trim() || void 0,
+    githubToken: githubToken.trim() || void 0
   });
   const handleSave = async () => {
     await saveConfig(currentData());
@@ -12698,6 +12718,20 @@ function SettingsScreen({ onDone }) {
               placeholder: "נצרת / עפולה / ..."
             }
           )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "כתובת Google Apps Script (לאילוצים)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              value: constraintsScriptUrl,
+              onChange: (e) => setConstraintsScriptUrl(e.target.value),
+              placeholder: "https://script.google.com/macros/s/...",
+              dir: "ltr",
+              style: { fontSize: "0.8rem" }
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hint", style: { fontSize: "0.75rem", color: "#6b7280", marginTop: 4, display: "block" }, children: "מתקבל לאחר פרסום Google Apps Script כ-Web App" })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "settings-card", children: [
@@ -12766,6 +12800,59 @@ function SettingsScreen({ onDone }) {
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "settings-card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "📁 מיקום הנתונים" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "hint", children: "הסידורים וההגדרות נשמרים בתיקייה הזו. אפשר להעביר אותם לתיקייה נגישה (למשל iCloud Drive) — הנתונים הקיימים יועתקו אליה והאפליקציה תיפתח מחדש." }),
+        storage?.missingCustom && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "hint", style: { color: "#b91c1c" }, children: "⚠️ התיקייה שנבחרה בעבר לא נמצאה — האפליקציה עובדת כרגע מהמיקום הרגיל." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "link-box", style: { direction: "ltr", fontSize: "0.78rem", wordBreak: "break-all" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: storage?.dir ?? "…" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-secondary", onClick: () => window.api.storage.choose(), children: "בחר תיקייה אחרת…" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost", onClick: () => window.api.storage.open(), children: "פתח ב-Finder" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "settings-card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "🔒 סיסמה לסידור" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "hint", children: "אם מוגדרת, כל מי שפותח את הסידור יצטרך להזין אותה — פעם אחת בכל מכשיר." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "סיסמה" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              value: schedulePassword,
+              onChange: (e) => setSchedulePassword(e.target.value),
+              placeholder: "השאר ריק = ללא סיסמה",
+              type: "text"
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "settings-card", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "🌐 GitHub Pages — שיתוף סידור" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "hint", children: [
+          "מפרסם את הסידור כדף אינטרנט אמיתי שניתן לשמור במסך הבית של הטלפון.",
+          " ",
+          "הקישור הקבוע: ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "ohadl19-ol.github.io/taavoura-scheduler" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "GitHub Token" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              value: githubToken,
+              onChange: (e) => setGithubToken(e.target.value),
+              placeholder: "ghp_...",
+              dir: "ltr",
+              style: { fontSize: "0.8rem" },
+              type: "password"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "hint", style: { marginTop: 4 }, children: [
+          "צור Token ב-GitHub: Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → בחר scope: ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "repo" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "settings-card", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "אפשרויות כלליות" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "hint", children: 'הערכים שמופיעים בתפריט "כללי" בעת עריכת תא. גרור לשינוי סדר.' }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "list-manager", children: [
@@ -12774,17 +12861,17 @@ function SettingsScreen({ onDone }) {
             {
               className: "list-item",
               draggable: true,
-              onDragStart: () => setDragIdx(i),
-              onDragEnter: () => setDragOver(i),
+              onDragStart: () => setOptDragIdx(i),
+              onDragEnter: () => setOptDragOver(i),
               onDragEnd: () => {
-                if (dragIdx !== null && dragOver !== null && dragIdx !== i) {
-                  moveOption(dragIdx, dragOver);
+                if (optDragIdx !== null && optDragOver !== null && optDragIdx !== optDragOver) {
+                  moveOption(optDragIdx, optDragOver);
                 }
-                setDragIdx(null);
-                setDragOver(null);
+                setOptDragIdx(null);
+                setOptDragOver(null);
               },
               onDragOver: (e) => e.preventDefault(),
-              style: { opacity: dragIdx === i ? 0.5 : 1 },
+              style: { opacity: optDragIdx === i ? 0.5 : 1 },
               children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "drag-handle", children: "⠿" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "item-name", children: opt }),
@@ -12884,7 +12971,8 @@ function ScheduleListScreen({ onOpen, onSettings }) {
     try {
       debugLog("api available?", typeof window.api);
       const prefix2 = toCompact(startDate) + "-" + toCompact(endDate);
-      const version = list.filter((s) => s.id.startsWith(prefix2 + "-v")).length + 1;
+      const existing = list.filter((s) => s.id.startsWith(prefix2 + "-v"));
+      const version = Math.max(0, ...existing.map((s) => s.version)) + 1;
       const id = prefix2 + "-v" + version;
       debugLog("creating schedule", { id, startDate, endDate });
       const data = {
@@ -12983,22 +13071,838 @@ function ScheduleListScreen({ onOpen, onSettings }) {
     ] }, s.id)) })
   ] });
 }
+function matchKey(s) {
+  return s.replace(/["'`׳״’‘”“.\s‏‎]/g, "").trim();
+}
+function cleanText(s) {
+  return s.replace(/[‏‎ ]/g, " ").replace(/([א-ת])["”“״]([א-ת])/g, "$1״$2").replace(/([א-ת])['’‘׳]/g, "$1׳").replace(/\s+/g, " ").trim();
+}
+const pad = (n) => String(n).padStart(2, "0");
+function isoOf(y, m, d) {
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(y, m - 1, d);
+  if (dt.getMonth() !== m - 1) return null;
+  return `${y}-${pad(m)}-${pad(d)}`;
+}
+function inferYear(m, d, start, end) {
+  const sy = Number(start.slice(0, 4)), ey = Number(end.slice(0, 4));
+  for (const y of [sy, ey]) {
+    const iso = isoOf(y, m, d);
+    if (iso && iso >= start && iso <= end) return y;
+  }
+  return sy;
+}
+function parseDateCell(raw, start, end) {
+  const s = cleanText(raw);
+  if (!s) return null;
+  let m;
+  if (m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)) return isoOf(+m[1], +m[2], +m[3]);
+  if (m = s.match(/(?:^|\D)(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})(?!\d)/)) {
+    let y = +m[3];
+    if (y < 100) y += 2e3;
+    return isoOf(y, +m[2], +m[1]);
+  }
+  if (m = s.match(/(?:^|\D)(\d{1,2})[./](\d{1,2})(?![./\d])/)) {
+    const d = +m[1], mo = +m[2];
+    return isoOf(inferYear(mo, d, start, end), mo, d);
+  }
+  for (let i = 0; i < HEBREW_MONTHS.length; i++) {
+    const re = new RegExp(`(\\d{1,2})\\s+ב?${HEBREW_MONTHS[i]}(?:\\s+(\\d{4}))?`);
+    if (m = s.match(re)) {
+      const d = +m[1];
+      const y = m[2] ? +m[2] : inferYear(i + 1, d, start, end);
+      return isoOf(y, i + 1, d);
+    }
+  }
+  if (/^\d{5}(\.\d+)?$/.test(s)) {
+    const serial = Math.floor(Number(s));
+    if (serial > 3e4 && serial < 8e4) {
+      const dt = new Date(Date.UTC(1899, 11, 30) + serial * 864e5);
+      return isoOf(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+    }
+  }
+  return null;
+}
+function cellsEqual(a, b) {
+  if (!a || !b) return !a && !b;
+  return a.category === b.category && matchKey(a.label) === matchKey(b.label) && matchKey(a.subNote ?? "") === matchKey(b.subNote ?? "");
+}
+function textToCell(raw, config) {
+  let text = cleanText(raw);
+  if (!text || text === "-" || text === "—") return { cell: null, known: true };
+  let subNote;
+  const sm = text.match(/^(.+?)\s*\((.+)\)$/);
+  if (sm) {
+    text = sm[1].trim();
+    subNote = sm[2].trim();
+  }
+  const k = matchKey(text);
+  const withNote = (c) => subNote ? { ...c, subNote } : c;
+  const judge = config.judges.find((j) => matchKey(j) === k);
+  if (judge) return { cell: withNote({ category: "judge", label: judge, judgeKey: judge }), known: true };
+  const sup = SUPERVISOR_OPTIONS.find((o) => matchKey(o) === k);
+  if (sup) return { cell: withNote({ category: "supervisor", label: sup }), known: true };
+  const generals = [...config.generalOptions ?? GENERAL_OPTIONS, "ת. עצורים"];
+  const gen = generals.find((o) => matchKey(o) === k);
+  if (gen) return { cell: withNote({ category: "general", label: gen }), known: true };
+  return { cell: withNote({ category: "general", label: text }), known: false };
+}
+function findHeader(grid, prosecutors) {
+  const proKeys = prosecutors.map(matchKey);
+  let best = null;
+  const limit = Math.min(grid.length, 15);
+  for (let r = 0; r < limit; r++) {
+    const cols = /* @__PURE__ */ new Map();
+    grid[r].forEach((cell, c) => {
+      const k = matchKey(cell ?? "");
+      if (!k) return;
+      const pi = proKeys.indexOf(k);
+      if (pi !== -1 && ![...cols.values()].includes(pi)) cols.set(c, pi);
+    });
+    if (cols.size >= 2 && (!best || cols.size > best.cols.size)) best = { row: r, cols };
+  }
+  return best;
+}
+function findDateColumn(grid, headerRow, proCols, start, end) {
+  const width = Math.max(...grid.map((r) => r.length));
+  let bestCol = -1, bestHits = 0;
+  for (let c = 0; c < width; c++) {
+    if (proCols.has(c)) continue;
+    let hits = 0;
+    for (let r = headerRow + 1; r < grid.length; r++) {
+      if (parseDateCell(grid[r][c] ?? "", start, end)) hits++;
+    }
+    if (hits > bestHits) {
+      bestHits = hits;
+      bestCol = c;
+    }
+  }
+  return bestCol;
+}
+function parseScheduleTable(grid, schedule, config) {
+  const rows = grid.map((r) => r.map((c) => (c ?? "").toString())).filter((r) => r.some((c) => c.trim() !== ""));
+  if (rows.length < 2) return { ok: false, error: "הטבלה ריקה — לא נמצאו שורות." };
+  const header = findHeader(rows, config.prosecutors);
+  if (!header) {
+    return { ok: false, error: "לא נמצאה שורת כותרת עם שמות תובעים. ודא שהשמות בטבלה זהים לשמות בהגדרות." };
+  }
+  const { startDate, endDate } = schedule;
+  const dateCol = findDateColumn(rows, header.row, header.cols, startDate, endDate);
+  if (dateCol === -1) return { ok: false, error: "לא נמצאה עמודת תאריכים בטבלה." };
+  const days = getDaysForSchedule(startDate, endDate);
+  const dayIndex = new Map(days.map((d, i) => [d.date, i]));
+  const unknownColumns = rows[header.row].map((h, c) => ({ h: cleanText(h), c })).filter(({ h, c }) => h && c !== dateCol && !header.cols.has(c) && !/^(יום|תאריך|יושבים היום)$/.test(h)).filter(({ c }) => rows.slice(header.row + 1).some((r) => (r[c] ?? "").trim() && !/^[אבגדהוש]['׳]?$/.test(r[c].trim()))).map(({ h }) => h);
+  const changes = [];
+  const datesRead = [];
+  const outOfRange = /* @__PURE__ */ new Set();
+  const newLabels = /* @__PURE__ */ new Set();
+  let unchangedCount = 0;
+  const assignments = schedule.assignments;
+  for (let r = header.row + 1; r < rows.length; r++) {
+    const date = parseDateCell(rows[r][dateCol] ?? "", startDate, endDate);
+    if (!date) continue;
+    const dayIdx = dayIndex.get(date);
+    if (dayIdx === void 0) {
+      outOfRange.add(date);
+      continue;
+    }
+    if (datesRead.includes(date)) continue;
+    datesRead.push(date);
+    header.cols.forEach((proIdx, c) => {
+      const { cell, known } = textToCell(rows[r][c] ?? "", config);
+      if (cell && !known) newLabels.add(cell.label);
+      const key = `${dayIdx}-${proIdx}`;
+      const before = assignments[key] ?? null;
+      if (cellsEqual(before, cell)) {
+        unchangedCount++;
+        return;
+      }
+      changes.push({ key, dayIdx, proIdx, date, prosecutor: config.prosecutors[proIdx], before, after: cell });
+    });
+  }
+  if (datesRead.length === 0) {
+    const sample = [...outOfRange].sort();
+    return {
+      ok: false,
+      error: sample.length ? `כל התאריכים בטבלה (${fmt(sample[0])}–${fmt(sample[sample.length - 1])}) מחוץ לטווח הסידור הפתוח. צור סידור שמכסה אותם.` : "לא נמצאו שורות עם תאריך תקין."
+    };
+  }
+  const matched = new Set(header.cols.values());
+  return {
+    ok: true,
+    result: {
+      changes: changes.sort((a, b) => a.dayIdx - b.dayIdx || a.proIdx - b.proIdx),
+      unchangedCount,
+      datesRead: datesRead.sort(),
+      matchedProsecutors: config.prosecutors.filter((_, i) => matched.has(i)),
+      missingProsecutors: config.prosecutors.filter((_, i) => !matched.has(i)),
+      unknownColumns,
+      outOfRangeDates: [...outOfRange].sort(),
+      newLabels: [...newLabels]
+    }
+  };
+}
+function applyChanges(assignments, changes) {
+  const next = { ...assignments };
+  for (const ch of changes) {
+    if (ch.after) next[ch.key] = ch.after;
+    else delete next[ch.key];
+  }
+  return next;
+}
+const fmt = (iso) => `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}`;
+const formatShortDate = fmt;
+function gridFromHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const tables = Array.from(doc.querySelectorAll("table"));
+  if (tables.length === 0) return null;
+  const table = tables.reduce((a, b) => b.rows.length > a.rows.length ? b : a);
+  const grid = [];
+  const spans = {};
+  Array.from(table.rows).forEach((tr, r) => {
+    const row = [];
+    let c = 0;
+    const take = () => {
+      while (spans[`${r}-${c}`] !== void 0) {
+        row[c] = spans[`${r}-${c}`];
+        c++;
+      }
+    };
+    Array.from(tr.cells).forEach((td) => {
+      take();
+      const text = (td.textContent ?? "").replace(/\s+/g, " ").trim();
+      const cs = Math.max(1, td.colSpan || 1), rs = Math.max(1, td.rowSpan || 1);
+      for (let i = 0; i < cs; i++) {
+        row[c + i] = i === 0 ? text : "";
+        for (let j = 1; j < rs; j++) spans[`${r + j}-${c + i}`] = "";
+      }
+      c += cs;
+    });
+    take();
+    grid.push(Array.from(row, (v) => v ?? ""));
+  });
+  return grid;
+}
+function gridFromText(text) {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const useTabs = lines.some((l) => l.includes("	"));
+  return lines.map((l) => useTabs ? l.split("	") : splitCsv(l));
+}
+function splitCsv(line) {
+  const out = [];
+  let cur = "", q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (q && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else q = !q;
+    } else if (ch === "," && !q) {
+      out.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+const showCell = (v) => v ? v.label + (v.subNote ? ` (${v.subNote})` : "") : "ריק";
+const dayName = (iso) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return HEBREW_DAYS[new Date(y, m - 1, d).getDay()];
+};
+function ImportScheduleModal({ schedule, config, onApply, onAddOptions, onClose }) {
+  const [result, setResult] = reactExports.useState(null);
+  const [error, setError] = reactExports.useState(null);
+  const [source, setSource] = reactExports.useState("");
+  const [excluded, setExcluded] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [optionsAdded, setOptionsAdded] = reactExports.useState(false);
+  const run = (grids, label) => {
+    setError(null);
+    let lastError = "לא נמצאה טבלה.";
+    for (const g of grids) {
+      const out = parseScheduleTable(g, schedule, config);
+      if (out.ok) {
+        setResult(out.result);
+        setSource(label);
+        setExcluded(/* @__PURE__ */ new Set());
+        return;
+      }
+      lastError = out.error;
+    }
+    setResult(null);
+    setError(lastError);
+  };
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
+    const text = e.clipboardData.getData("text/plain");
+    const grids = [];
+    const fromHtml = html ? gridFromHtml(html) : null;
+    if (fromHtml) grids.push(fromHtml);
+    if (text) grids.push(gridFromText(text));
+    run(grids, "טבלה מודבקת");
+  };
+  const handleFile = async () => {
+    const f = await window.api.importTable.pick();
+    if (!f) return;
+    const grids = f.sheets ?? (f.text ? [gridFromText(f.text)] : []);
+    run(grids, f.name);
+  };
+  const byDate = reactExports.useMemo(() => {
+    const m = /* @__PURE__ */ new Map();
+    result?.changes.forEach((c) => m.set(c.date, [...m.get(c.date) ?? [], c]));
+    return [...m.entries()];
+  }, [result]);
+  const toggle = (key) => setExcluded((prev) => {
+    const n = new Set(prev);
+    if (n.has(key)) n.delete(key);
+    else n.add(key);
+    return n;
+  });
+  const toggleDate = (keys, on) => setExcluded((prev) => {
+    const n = new Set(prev);
+    keys.forEach((k) => on ? n.delete(k) : n.add(k));
+    return n;
+  });
+  const selected = result ? result.changes.filter((c) => !excluded.has(c.key)) : [];
+  const apply = () => {
+    if (!result) return;
+    onApply({ ...schedule, assignments: applyChanges(schedule.assignments, selected) });
+    onClose();
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal import-modal", onClick: (e) => e.stopPropagation(), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "📋 ייבוא סידור" }),
+    !result && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "modal-hint", children: "העתק את הטבלה מ-Excel / Word / Google Sheets והדבק בתיבה (⌘V), או בחר קובץ Excel. הטבלה צריכה לכלול עמודת תאריך ושורת כותרת עם שמות התובעים." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "paste-zone",
+          tabIndex: 0,
+          contentEditable: true,
+          suppressContentEditableWarning: true,
+          onPaste: handlePaste,
+          onKeyDown: (e) => {
+            if (!(e.metaKey || e.ctrlKey)) e.preventDefault();
+          },
+          children: "לחץ כאן והדבק את הטבלה"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-actions", style: { justifyContent: "space-between" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-secondary", onClick: handleFile, children: "📂 בחר קובץ Excel / CSV" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost", onClick: onClose, children: "ביטול" })
+      ] })
+    ] }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-error-bar", style: { margin: 0 }, children: [
+      "⚠️ ",
+      error
+    ] }),
+    result && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-summary", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: source }),
+          " · ",
+          result.datesRead.length,
+          " ימים (",
+          formatShortDate(result.datesRead[0]),
+          "–",
+          formatShortDate(result.datesRead[result.datesRead.length - 1]),
+          ") · ",
+          result.matchedProsecutors.length,
+          " תובעים"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: result.changes.length }),
+          " שינויים · ",
+          result.unchangedCount,
+          " תאים זהים"
+        ] })
+      ] }),
+      result.missingProsecutors.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-warn", children: [
+        "אין בטבלה עמודה עבור: ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: result.missingProsecutors.join(", ") }),
+        " — התאים שלהם לא ישתנו."
+      ] }),
+      result.unknownColumns.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-warn", children: [
+        "עמודות שלא זוהו כתובע ולא ייובאו: ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: result.unknownColumns.join(", ") }),
+        " ",
+        "(אם זה תובע — בדוק שהשם זהה לשם בהגדרות)"
+      ] }),
+      result.outOfRangeDates.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-warn", children: [
+        result.outOfRangeDates.length,
+        " תאריכים מחוץ לטווח הסידור לא ייובאו (",
+        formatShortDate(result.outOfRangeDates[0]),
+        "–",
+        formatShortDate(result.outOfRangeDates[result.outOfRangeDates.length - 1]),
+        ")"
+      ] }),
+      result.newLabels.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-warn", children: [
+        "ערכים שאינם ברשימות (ייובאו כטקסט חופשי): ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: result.newLabels.join(", ") }),
+        !optionsAdded ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost btn-xs", onClick: () => {
+          onAddOptions(result.newLabels);
+          setOptionsAdded(true);
+        }, children: "+ הוסף לאפשרויות הכלליות" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#16a34a", marginRight: 6 }, children: "✓ נוספו" })
+      ] }),
+      result.changes.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "import-nochange", children: "✓ הסידור באפליקציה כבר זהה לטבלה — אין מה לעדכן." }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "import-changes", children: byDate.map(([date, list]) => {
+        const keys = list.map((c) => c.key);
+        const allOn = keys.every((k) => !excluded.has(k));
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-day", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "import-day-title", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "checkbox", checked: allOn, onChange: (e) => toggleDate(keys, e.target.checked) }),
+            dayName(date),
+            " ",
+            formatShortDate(date),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "import-day-count", children: list.length })
+          ] }),
+          list.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: `import-row ${excluded.has(c.key) ? "off" : ""}`, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("input", { type: "checkbox", checked: !excluded.has(c.key), onChange: () => toggle(c.key) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "import-pro", children: c.prosecutor }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "import-before", children: showCell(c.before) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "import-arrow", children: "←" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "import-after", children: showCell(c.after) })
+          ] }, c.key))
+        ] }, date);
+      }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-actions", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost", onClick: () => {
+          setResult(null);
+          setError(null);
+        }, children: "→ טבלה אחרת" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost", onClick: onClose, children: "ביטול" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "btn btn-primary", onClick: apply, disabled: selected.length === 0, children: [
+          "✓ עדכן ",
+          selected.length,
+          " תאים"
+        ] })
+      ] })
+    ] })
+  ] }) });
+}
+const DEFAULT_BUSY_THRESHOLD = 100;
+const sittingKey = (s) => `${s.judge}|${s.court}`;
+const keyJudge = (k) => k.split("|")[0];
+const keyCourt = (k) => k.split("|")[1] ?? "";
+const shortCourt = (c) => c.replace(/^שלום\s*/, "");
+const norm = (s) => s.replace(/["'`׳״’‘”“.‏‎]/g, "").replace(/\s+/g, " ").trim();
+function parseJudgeFile(text) {
+  let d;
+  try {
+    d = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "הקובץ אינו JSON תקין." };
+  }
+  const o = d;
+  if (!o || o.type !== "judge-sittings" || !o.days || typeof o.days !== "object") {
+    return { ok: false, error: 'זה לא קובץ יומן שופטים. בנט המשפט, בדף "דיונים לשופט", לחץ "📥 קובץ לסידור העבודה".' };
+  }
+  const days = {};
+  for (const [date, list] of Object.entries(o.days)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Array.isArray(list)) continue;
+    days[date] = list.filter((x) => x && typeof x.judge === "string" && typeof x.court === "string").map((x) => ({
+      judge: String(x.judge).trim(),
+      court: String(x.court).trim(),
+      total: +x.total || 0,
+      arr: +x.arr || 0,
+      proof: +x.proof || 0,
+      sen: +x.sen || 0,
+      other: +x.other || 0
+    }));
+  }
+  if (Object.keys(days).length === 0) return { ok: false, error: "אין בקובץ ימים עם נתונים." };
+  return {
+    ok: true,
+    load: {
+      fetchedAt: typeof o.fetchedAt === "string" ? o.fetchedAt : (/* @__PURE__ */ new Date()).toISOString(),
+      courts: Array.isArray(o.courts) ? o.courts.map(String) : [],
+      days
+    }
+  };
+}
+function mergeLoad(prev, incoming, start, end) {
+  const inRange = Object.keys(incoming.days).filter((d) => d >= start && d <= end).sort();
+  const outOfRange = Object.keys(incoming.days).length - inRange.length;
+  const days = { ...prev?.days ?? {} };
+  const changed = [];
+  for (const d of inRange) {
+    const before = JSON.stringify(sortSittings(days[d] ?? null));
+    days[d] = incoming.days[d];
+    if (prev?.days[d] && before !== JSON.stringify(sortSittings(days[d]))) changed.push(d);
+  }
+  const courts = [.../* @__PURE__ */ new Set([...prev?.courts ?? [], ...incoming.courts])];
+  return { load: { fetchedAt: incoming.fetchedAt, courts, days }, inRange, outOfRange, changed };
+}
+const sortSittings = (l) => l && [...l].sort((a, b) => sittingKey(a).localeCompare(sittingKey(b)));
+function diaryJudges(load) {
+  const m = /* @__PURE__ */ new Map();
+  for (const list of Object.values(load?.days ?? {})) {
+    for (const s of list) m.set(sittingKey(s), (m.get(sittingKey(s)) ?? 0) + s.total);
+  }
+  return [...m.entries()].map(([key, total]) => ({ key, total })).sort((a, b) => b.total - a.total);
+}
+function guessMatch(label, keys) {
+  const tokens = norm(label).split(" ").filter(Boolean);
+  const courtTokens = tokens.filter((t) => keys.some((k) => norm(keyCourt(k)).includes(t)));
+  const nameTokens = tokens.filter((t) => !courtTokens.includes(t));
+  if (!nameTokens.length) return void 0;
+  let best = [], bestScore = 0;
+  for (const k of keys) {
+    const court = norm(keyCourt(k)), judge = norm(keyJudge(k));
+    if (!courtTokens.every((t) => court.includes(t))) continue;
+    const score = nameTokens.filter((t) => judge.split(" ").some((w) => w === t || t.length >= 3 && w.includes(t))).length;
+    if (score < nameTokens.length) continue;
+    if (score > bestScore) {
+      bestScore = score;
+      best = [k];
+    } else if (score === bestScore && score > 0) best.push(k);
+  }
+  return best.length === 1 ? best[0] : void 0;
+}
+function effectiveMap(config, load) {
+  const keys = diaryJudges(load).map((j) => j.key);
+  const saved = config.judgeDiaryMap ?? {};
+  const out = {};
+  for (const j of config.judges) {
+    if (j in saved) {
+      if (saved[j]) out[j] = saved[j];
+      continue;
+    }
+    const g = guessMatch(j, keys);
+    if (g) out[j] = g;
+  }
+  return out;
+}
+function analyzeLoad(schedule, config, days) {
+  const load = schedule.judgeLoad;
+  if (!load) return null;
+  const map = effectiveMap(config, load);
+  const threshold = config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD;
+  const labelsOf = /* @__PURE__ */ new Map();
+  for (const [label, key] of Object.entries(map)) labelsOf.set(key, [...labelsOf.get(key) ?? [], label]);
+  const res = {
+    loadedDays: /* @__PURE__ */ new Set(),
+    perDay: /* @__PURE__ */ new Map(),
+    uncovered: [],
+    busy: [],
+    idleCells: /* @__PURE__ */ new Map(),
+    proHearings: config.prosecutors.map(() => 0),
+    map
+  };
+  days.forEach((day, dayIdx) => {
+    const list = load.days[day.date];
+    if (!list || day.isWeekend) return;
+    res.loadedDays.add(dayIdx);
+    const assignedTo = /* @__PURE__ */ new Map();
+    config.prosecutors.forEach((_, proIdx) => {
+      const v = schedule.assignments[`${dayIdx}-${proIdx}`];
+      if (!v || v.category !== "judge") return;
+      const label = v.judgeKey ?? v.label;
+      const key = map[label];
+      if (!key) return;
+      const s = list.find((x) => sittingKey(x) === key);
+      if (!s || s.total === 0) {
+        res.idleCells.set(
+          `${dayIdx}-${proIdx}`,
+          `לפי נט המשפט, ${keyJudge(key)} (${shortCourt(keyCourt(key))}) לא יושב/ת ביום הזה`
+        );
+        return;
+      }
+      assignedTo.set(key, [...assignedTo.get(key) ?? [], proIdx]);
+    });
+    const out = [];
+    for (const [key, labels] of labelsOf) {
+      const s = list.find((x) => sittingKey(x) === key);
+      if (!s || s.total === 0) continue;
+      const pros = assignedTo.get(key) ?? [];
+      const ds = { key, labels, sitting: s, prosecutors: pros };
+      out.push(ds);
+      if (pros.length === 0) res.uncovered.push({ dayIdx, ds });
+      else {
+        pros.forEach((p) => {
+          res.proHearings[p] += s.total / pros.length;
+        });
+        if (pros.length === 1 && s.total >= threshold) res.busy.push({ dayIdx, ds });
+      }
+    }
+    out.sort((a, b) => b.sitting.total - a.sitting.total);
+    res.perDay.set(dayIdx, out);
+  });
+  res.proHearings = res.proHearings.map(Math.round);
+  return res;
+}
+function breakdown(s) {
+  return [
+    s.arr && `הקראות ${s.arr}`,
+    s.proof && `הוכחות ${s.proof}`,
+    s.sen && `לעונש ${s.sen}`,
+    s.other && `אחר ${s.other}`
+  ].filter(Boolean).join(" · ");
+}
+function sittingsText(a, dayIdx) {
+  if (!a.loadedDays.has(dayIdx)) return "";
+  const list = a.perDay.get(dayIdx) ?? [];
+  if (!list.length) return "אין ישיבות";
+  return list.map((ds) => `${ds.labels[0]} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ""}`).join(" · ");
+}
+const DEFAULT_DIARY_COURTS = ["שלום נוף הגליל-נצרת", "שלום טבריה"];
+function sundaysOf(start, end) {
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const d = new Date(sy, sm - 1, sd, 12), last = new Date(ey, em - 1, ed, 12);
+  d.setDate(d.getDate() - d.getDay());
+  const out = [];
+  const p = (n) => String(n).padStart(2, "0");
+  while (d <= last) {
+    out.push(`${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`);
+    d.setDate(d.getDate() + 7);
+  }
+  return out;
+}
+function JudgeLoadModal({ schedule, config, onApply, onSaveConfig, onClose }) {
+  const fileRef = reactExports.useRef(null);
+  const [error, setError] = reactExports.useState(null);
+  const [summary, setSummary] = reactExports.useState(null);
+  const load = schedule.judgeLoad;
+  const judges = reactExports.useMemo(() => diaryJudges(load), [load]);
+  const [map, setMap] = reactExports.useState(() => {
+    const eff = effectiveMap(config, load);
+    return Object.fromEntries(config.judges.map((j) => [j, eff[j] ?? ""]));
+  });
+  const [threshold, setThreshold] = reactExports.useState(String(config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD));
+  const [courts, setCourts] = reactExports.useState((config.diaryCourts ?? DEFAULT_DIARY_COURTS).join("\n"));
+  const [fetching, setFetching] = reactExports.useState(false);
+  const [progress, setProgress] = reactExports.useState("");
+  reactExports.useEffect(() => window.api.diary.onProgress(setProgress), []);
+  const courtList = () => courts.split(/[\n,]/).map((c) => c.trim()).filter(Boolean);
+  const handleFetch = async () => {
+    const list = courtList();
+    if (!list.length) {
+      setError("לא הוגדרו בתי משפט.");
+      return;
+    }
+    setFetching(true);
+    setError(null);
+    setSummary(null);
+    try {
+      const r = await window.api.diary.fetch({ courts: list, sundays: sundaysOf(schedule.startDate, schedule.endDate) });
+      if (!r.ok) {
+        setError(`השליפה נכשלה: ${r.error}`);
+        return;
+      }
+      ingest(JSON.stringify(r.data));
+      if (list.join("|") !== (config.diaryCourts ?? DEFAULT_DIARY_COURTS).join("|")) onSaveConfig({ ...config, diaryCourts: list });
+    } finally {
+      setFetching(false);
+      setProgress("");
+    }
+  };
+  const handleFile = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => ingest(String(reader.result ?? ""));
+    reader.readAsText(f, "utf-8");
+  };
+  const ingest = (text) => {
+    {
+      const parsed = parseJudgeFile(text);
+      if (!parsed.ok) {
+        setError(parsed.error);
+        return;
+      }
+      const m = mergeLoad(load, parsed.load, schedule.startDate, schedule.endDate);
+      if (m.inRange.length === 0) {
+        setError(`התאריכים בקובץ מחוץ לטווח הסידור (${formatShortDate(schedule.startDate)}–${formatShortDate(schedule.endDate)}).`);
+        return;
+      }
+      setError(null);
+      onApply({ ...schedule, judgeLoad: m.load });
+      setSummary({ inRange: m.inRange, outOfRange: m.outOfRange, changed: m.changed });
+      const eff = effectiveMap(config, m.load);
+      setMap((prev) => Object.fromEntries(config.judges.map((j) => [j, prev[j] || eff[j] || ""])));
+    }
+  };
+  const save = () => {
+    const n = Number(threshold);
+    onSaveConfig({
+      ...config,
+      judgeDiaryMap: map,
+      busyDayThreshold: Number.isFinite(n) && n > 0 ? Math.round(n) : DEFAULT_BUSY_THRESHOLD
+    });
+    onClose();
+  };
+  const clear = () => {
+    const { judgeLoad: _drop, ...rest } = schedule;
+    onApply(rest);
+    onClose();
+  };
+  const mappedKeys = new Set(Object.values(map).filter(Boolean));
+  const unmapped = judges.filter((j) => !mappedKeys.has(j.key) && j.total > 0);
+  const loadedDates = Object.keys(load?.days ?? {}).sort();
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal judge-load-modal", onClick: (e) => e.stopPropagation(), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "⚖️ יומן שופטים מנט המשפט" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "modal-hint", children: "המידע הזה פנימי: הוא מוצג כאן בעורך ובתבנית שנשלחת למכין הסידור, ולא בסידור שנשלח לתובעים." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("input", { ref: fileRef, type: "file", accept: ".json,application/json", style: { display: "none" }, onChange: handleFile }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-actions", style: { justifyContent: "flex-start" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          className: "btn btn-primary",
+          onClick: handleFetch,
+          disabled: fetching,
+          title: "שולף מהאתר הציבורי של נט המשפט (בלי הזדהות) את כל השבועות של הסידור הזה",
+          children: fetching ? "⏳ שולף…" : load ? "🔄 שלוף שוב מנט המשפט" : "🔄 שלוף מנט המשפט"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          className: "btn btn-secondary",
+          onClick: () => fileRef.current?.click(),
+          disabled: fetching,
+          title: 'קובץ שהורד מהתוסף בכרום ("📥 קובץ לסידור העבודה")',
+          children: "📂 מקובץ"
+        }
+      ),
+      load && !fetching && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost", onClick: clear, children: "🗑 נקה נתוני יומן" })
+    ] }),
+    fetching && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "0.85rem", color: "#1e40af", margin: "4px 0" }, children: progress || "מתחיל…" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { style: { fontSize: "0.8rem", margin: "4px 0" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("summary", { style: { cursor: "pointer" }, children: [
+        "בתי משפט לשליפה (",
+        courtList().length,
+        ")"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          rows: 3,
+          value: courts,
+          onChange: (e) => setCourts(e.target.value),
+          style: { width: "100%", marginTop: 4 },
+          placeholder: "שם בית משפט בכל שורה, בדיוק כמו ברשימה בנט המשפט"
+        }
+      )
+    ] }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-error-bar", style: { margin: "8px 0" }, children: [
+      "⚠️ ",
+      error
+    ] }),
+    summary && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "constraints-info-bar", style: { margin: "8px 0" }, children: [
+      "✓ נטענו ",
+      summary.inRange.length,
+      " ימים (",
+      formatShortDate(summary.inRange[0]),
+      "–",
+      formatShortDate(summary.inRange[summary.inRange.length - 1]),
+      ")",
+      summary.changed.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        " · ",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("strong", { children: [
+          "השתנו מאז השליפה הקודמת: ",
+          summary.changed.map(formatShortDate).join(", ")
+        ] })
+      ] }),
+      summary.outOfRange > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        " · ",
+        summary.outOfRange,
+        " ימים מחוץ לטווח הסידור לא נטענו"
+      ] })
+    ] }),
+    load && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "0.8rem", color: "#6b7280", margin: "6px 0" }, children: [
+        loadedDates.length,
+        " ימים עם נתונים · שליפה אחרונה ",
+        new Date(load.fetchedAt).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+        " · ",
+        "לא כולל תיקים חסויים"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { style: { margin: "12px 0 6px", fontSize: "0.95rem" }, children: "התאמת שופטים" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "judge-map-table", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "בסידור" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "בנט המשפט" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: config.judges.map((j) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: j }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { value: map[j] ?? "", onChange: (e) => setMap({ ...map, [j]: e.target.value }), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "— לא לבדוק —" }),
+            map[j] && !judges.some((x) => x.key === map[j]) && /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: map[j], children: [
+              keyJudge(map[j]),
+              " · ",
+              shortCourt(keyCourt(map[j])),
+              " (לא בנתונים)"
+            ] }),
+            judges.map((x) => /* @__PURE__ */ jsxRuntimeExports.jsxs("option", { value: x.key, children: [
+              keyJudge(x.key),
+              " · ",
+              shortCourt(keyCourt(x.key)),
+              " (",
+              x.total,
+              ")"
+            ] }, x.key))
+          ] }) })
+        ] }, j)) })
+      ] }),
+      unmapped.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { style: { marginTop: 8, fontSize: "0.8rem" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("summary", { style: { cursor: "pointer" }, children: [
+          unmapped.length,
+          " שופטים ביומן שלא מותאמים (לא נבדקים)"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "#6b7280", marginTop: 4 }, children: unmapped.map((x) => `${keyJudge(x.key)} (${shortCourt(keyCourt(x.key))}) ${x.total}`).join(" · ") })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: { display: "block", marginTop: 12, fontSize: "0.85rem" }, children: [
+        "להתריע על יום עמוס עם תובע אחד, מ-",
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "number",
+            min: 1,
+            value: threshold,
+            onChange: (e) => setThreshold(e.target.value),
+            style: { width: 60, margin: "0 6px" }
+          }
+        ),
+        "דיונים לשופט"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-actions", children: [
+      load && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-primary", onClick: save, children: "שמור התאמות" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost", onClick: onClose, children: "סגור" })
+    ] })
+  ] }) });
+}
 function getGeneralOpts(config) {
   return config.generalOptions ?? GENERAL_OPTIONS;
 }
-function CellPopover({ config, current, onSelect, onClose, anchorRef, isWeekend, fillMode }) {
+function CellPopover({
+  config,
+  current,
+  onSelect,
+  onSubNote,
+  onClose,
+  anchorRef,
+  isWeekend,
+  fillMode,
+  constraint,
+  onApprove,
+  onReject
+}) {
   const popRef = reactExports.useRef(null);
   const customRef = reactExports.useRef(null);
+  const subNoteRef = reactExports.useRef(null);
   reactExports.useEffect(() => {
     if (!anchorRef.current || !popRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
     const pop2 = popRef.current;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
     let top = rect.bottom + 6;
     let left = rect.left;
     if (left + 340 > vw) left = vw - 350;
-    if (top + 420 > vh) top = rect.top - 430;
+    if (top + 480 > vh) top = rect.top - 490;
     pop2.style.top = `${top}px`;
     pop2.style.left = `${left}px`;
   }, [anchorRef]);
@@ -13011,11 +13915,47 @@ function CellPopover({ config, current, onSelect, onClose, anchorRef, isWeekend,
   }, [onClose]);
   const pick = (val) => {
     onSelect(val);
-    onClose();
   };
   const isActive = (val) => current?.category === val.category && current?.label === val.label;
+  const constraintBanner = constraint && constraint.status === "pending" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-constraint-banner", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-constraint-label", children: [
+      "⚠️ בקשת עובד: ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: constraint.label })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-constraint-actions", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          className: "constraint-approve-btn",
+          onClick: () => {
+            onApprove?.();
+          },
+          children: "✓ אשר ומלא"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          className: "constraint-reject-btn",
+          onClick: () => {
+            onReject?.();
+          },
+          children: "✕ דחה"
+        }
+      )
+    ] })
+  ] }) : constraint && constraint.status === "approved" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-constraint-banner approved", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+      "✓ אילוץ מאושר: ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: constraint.label })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "constraint-reject-btn", onClick: () => {
+      onReject?.();
+    }, children: "בטל" })
+  ] }) : null;
   if (isWeekend) {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover", ref: popRef, children: [
+      constraintBanner,
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "popover-section", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-chips", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
@@ -13025,14 +13965,7 @@ function CellPopover({ config, current, onSelect, onClose, anchorRef, isWeekend,
             children: "🚨 ת. עצורים"
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            className: "chip chip-clear",
-            onClick: () => pick(null),
-            children: "נקה"
-          }
-        )
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "chip chip-clear", onClick: () => pick(null), children: "נקה" })
       ] }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "popover-section", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
         "input",
@@ -13041,15 +13974,15 @@ function CellPopover({ config, current, onSelect, onClose, anchorRef, isWeekend,
           className: "custom-input",
           placeholder: "✏️ אחר…",
           onKeyDown: (e) => {
-            if (e.key === "Enter" && customRef.current?.value.trim()) {
+            if (e.key === "Enter" && customRef.current?.value.trim())
               pick({ category: "general", label: customRef.current.value.trim() });
-            }
           }
         }
       ) })
     ] });
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover", ref: popRef, children: [
+    constraintBanner,
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-section", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "popover-section-title", children: "⚖️ שופטים" }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-chips judge-chips", children: [
@@ -13099,14 +14032,7 @@ function CellPopover({ config, current, onSelect, onClose, anchorRef, isWeekend,
           },
           opt
         )),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            className: "chip chip-clear",
-            onClick: () => pick(null),
-            children: fillMode ? "נקה עמודה" : "נקה"
-          }
-        )
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "chip chip-clear", onClick: () => pick(null), children: fillMode ? "נקה עמודה" : "נקה" })
       ] })
     ] }),
     fillMode && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "popover-fill-hint", children: 'ימלא תאים ריקים בלבד. "נקה עמודה" מוחק הכל.' }),
@@ -13117,182 +14043,388 @@ function CellPopover({ config, current, onSelect, onClose, anchorRef, isWeekend,
         className: "custom-input",
         placeholder: "טקסט חופשי…",
         onKeyDown: (e) => {
-          if (e.key === "Enter" && customRef.current?.value.trim()) {
+          if (e.key === "Enter" && customRef.current?.value.trim())
             pick({ category: "general", label: customRef.current.value.trim() });
-          }
         }
       }
-    ) })
+    ) }),
+    current && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "popover-section popover-subnote-section", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "popover-section-title", style: { fontSize: "0.72rem", color: "#6b7280" }, children: "📎 הערה נוספת לתא" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          ref: subNoteRef,
+          className: "custom-input",
+          placeholder: "תיק מוצמד / שופט נוסף…",
+          defaultValue: current.subNote ?? "",
+          onKeyDown: (e) => {
+            if (e.key === "Enter") {
+              onSubNote?.((subNoteRef.current?.value ?? "").trim());
+              onClose();
+            }
+          },
+          onBlur: (e) => onSubNote?.(e.target.value.trim())
+        }
+      )
+    ] })
   ] });
 }
-const HE_DOW_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+const HE_DOW_SHORT = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
+const HE_MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+const APP_ICON_B64 = "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";
 function esc$1(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function classify(text, judges) {
-  if (!text || !text.trim()) return { type: "empty", badge: null, label: "" };
-  if (text.includes("כונן")) return { type: "special", badge: "badge-special", label: "כונן" };
-  if (text.includes("יום עיון")) return { type: "ivun", badge: "badge-ivun", label: "יום עיון" };
-  if (text.includes("ת. עצורים")) return { type: "special", badge: "badge-special", label: "ת. עצורים" };
-  if (text.includes("מזכירות")) return { type: "mazkirut", badge: "badge-mazkirut", label: "מזכירות" };
-  if (text.includes("מבחן")) return { type: "mazkirut", badge: "badge-mazkirut", label: "מבחן" };
-  if (text.includes("ועדה")) return { type: "mazkirut", badge: "badge-mazkirut", label: "ועדה" };
-  for (const j of judges) {
-    if (text.includes(j)) return { type: "raid", badge: "badge-judge", label: j };
-  }
-  if (text.includes("משרד")) return { type: "mishrad", badge: "badge-mishrad", label: "משרד" };
-  return { type: "mishrad", badge: "badge-mishrad", label: text };
+function safeJs(v) {
+  return JSON.stringify(v).replace(/</g, "\\x3C").replace(/>/g, "\\x3E");
+}
+function passwordScript(password) {
+  const encoded = btoa(unescape(encodeURIComponent(password)));
+  return `<script>document.addEventListener('DOMContentLoaded',function(){
+var s='${encoded}',k='sidur_auth_'+s.slice(0,8);
+if(localStorage.getItem(k)===s)return;
+var o=document.createElement('div');
+o.style.cssText='position:fixed;inset:0;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;font-family:Arial,sans-serif';
+o.innerHTML='<h2 style="color:#fff;margin:0">🔒 סידור עבודה</h2>'
++'<p style="color:#8892b0;font-size:.9rem;margin:0">הכנס סיסמה לצפייה בסידור</p>'
++'<input id="pi" type="password" placeholder="סיסמה" style="padding:10px 16px;border-radius:8px;border:2px solid #4f46e5;font-size:1rem;text-align:center;width:200px;outline:none" dir="ltr">'
++'<button id="pb" style="background:#6366f1;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:700">כניסה ›</button>'
++'<div id="pe" style="color:#ef4444;font-size:.85rem;min-height:1.2em"></div>';
+document.body.prepend(o);
+function chk(){
+  var v=document.getElementById('pi').value;
+  if(btoa(unescape(encodeURIComponent(v)))===s){localStorage.setItem(k,s);o.remove();}
+  else{document.getElementById('pe').textContent='סיסמה שגויה';document.getElementById('pi').value='';document.getElementById('pi').focus();}
+}
+document.getElementById('pb').addEventListener('click',chk);
+document.getElementById('pi').addEventListener('keydown',function(e){if(e.key==='Enter')chk();});
+setTimeout(function(){document.getElementById('pi').focus();},100);
+})<\/script>`;
 }
 function generateHTML(schedule, config) {
   const days = getDaysForSchedule(schedule.startDate, schedule.endDate);
   const range = rangeLabel(schedule.startDate, schedule.endDate);
-  const ver = "גרסה " + schedule.version;
-  function getA(di, pi) {
-    const v = schedule.assignments[`${di}-${pi}`];
-    return v ? v.label : "";
-  }
-  function dayDateHtml(day) {
-    return '<div class="dd"><div class="dow">' + HE_DOW_NAMES[day.dayOfWeek] + '</div><div class="dn">' + day.dayOfMonth + '</div></div><div class="ds"></div>';
-  }
-  const proSections = config.prosecutors.map((pName, pi) => {
-    let workDays = 0, courtDays = 0;
-    const counts = {};
-    const cards = [];
-    days.forEach((day, di) => {
-      const a = getA(di, pi);
-      const cls = classify(a, config.judges);
-      const isEmpty = !a.trim();
-      const isWE = day.isWeekend;
-      if (!isWE && !isEmpty) workDays++;
-      if (!isWE && !isEmpty && config.judges.some((j) => a.includes(j))) courtDays++;
-      if (cls.label && !isWE && !isEmpty) counts[cls.label] = (counts[cls.label] ?? 0) + 1;
-      if (isWE && isEmpty) {
-        cards.push(
-          '<div class="dc shabbat">' + dayDateHtml(day) + '<div class="dc-body"><span class="dim">' + (day.dayOfWeek === 6 ? "שבת" : "שישי") + "</span></div></div>"
-        );
-      } else {
-        const badge = cls.badge ? '<span class="badge ' + cls.badge + '">' + esc$1(cls.label) + "</span>" : "";
-        cards.push(
-          '<div class="dc type-' + cls.type + '">' + dayDateHtml(day) + '<div class="dc-body"><div class="asgn">' + (a ? esc$1(a) : "—") + "</div>" + badge + "</div></div>"
-        );
-      }
+  const [sy, sm] = schedule.startDate.split("-").map(Number);
+  const [, em] = schedule.endDate.split("-").map(Number);
+  const sd = Number(schedule.startDate.split("-")[2]);
+  const startDateObj = new Date(sy, sm - 1, sd);
+  const dArr = days.map((day, di) => {
+    const dateLabel = day.dayOfMonth + " " + HE_MONTHS[day.month - 1];
+    const d = new Date(startDateObj);
+    d.setDate(d.getDate() + di);
+    const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const asgns = config.prosecutors.map((_, pi) => {
+      const v = schedule.assignments[`${di}-${pi}`];
+      if (!v || !v.label) return "";
+      return v.subNote ? v.label + "|" + v.subNote : v.label;
     });
-    const top3 = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-    const statsHtml = '<div class="sb"><div class="sc"><div class="sn">' + workDays + '</div><div class="sl">ימי עבודה</div></div><div class="sc"><div class="sn g">' + courtDays + '</div><div class="sl">ימי ב״מ</div></div>' + top3.map(([l, n]) => '<div class="sc"><div class="sn s">' + n + '</div><div class="sl">' + esc$1(l) + "</div></div>").join("") + "</div>";
-    return '<section id="pro-' + pi + '" class="sec"><div class="sh"><h2 class="st">👤 ' + esc$1(pName) + '</h2><a href="#top" class="back">הצג הכל ↑</a></div>' + statsHtml + '<div class="mv">' + cards.join("") + "</div></section>";
+    return [dateLabel, HE_DOW_SHORT[day.dayOfWeek], isoDate, asgns, schedule.dayNotes?.[di] ?? null];
   });
-  const judgeSections = [];
-  config.judges.forEach((jName, ji) => {
-    const cards = [];
-    days.forEach((day, di) => {
-      const prosHere = [];
-      config.prosecutors.forEach((pName, pi) => {
-        const a = getA(di, pi);
-        if (a && a.includes(jName)) prosHere.push(pName);
-      });
-      if (!prosHere.length) return;
-      cards.push(
-        '<div class="dc type-raid">' + dayDateHtml(day) + '<div class="dc-body">' + prosHere.map((p) => '<span class="ptag">' + esc$1(p) + "</span>").join(" ") + "</div></div>"
-      );
+  const css = `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{min-height:100%;font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f0f2f5;--surface:#ffffff;--surface2:#f8fafc;--border:#e5e7eb;
+  --text:#1a1a2e;--text2:#4a5568;--text3:#94a3b8;
+  --hdr-bg:#1a1a2e;--strip-bg:#1a1a2e;
+  --tab-act:#4f46e5;--tab-txt:#64748b;
+  --chip-bg:#252d42;--chip-txt:#8892b0;
+  --chip-sel-bg:#312e81;--chip-sel-txt:#c7d2fe;
+  --chip-ring:#818cf8;--chip-we:0.4;
+  --det-bg:#fee2e2;--det-tx:#991b1b;--det-bar:#dc2626;
+  --crt-bg:#f0fdf4;--crt-tx:#14532d;--crt-bar:#16a34a;
+  --onc-bg:#f0fdfa;--onc-tx:#0f766e;--onc-bar:#0d9488;
+  --ofc-bg:#eef2ff;--ofc-tx:#3730a3;--ofc-bar:#4f46e5;
+  --off-bg:#f3f4f6;--off-tx:#4b5563;--off-bar:#9ca3af;
+  --oth-bg:#faf5ff;--oth-tx:#6b21a8;--oth-bar:#8b5cf6;
+  --today-bg:#eef2ff;--today-bdr:#4f46e5;
+  --hdr-h:72px;
+}
+#hdr{position:sticky;top:0;z-index:60;background:var(--hdr-bg);padding:env(safe-area-inset-top,0px) 0 0}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0}
+.hdr-title{color:#f1f5f9;font-size:.98rem;font-weight:700;letter-spacing:-.01em}
+.hdr-meta{color:#4a5e7a;font-size:.7rem;margin-top:2px}
+.tabs{display:flex;margin:10px 12px 0;background:#0d1117;border-radius:10px 10px 0 0;padding:3px 3px 0;gap:2px}
+.tab{flex:1;padding:9px 6px 10px;background:transparent;color:var(--tab-txt);font-size:.84rem;font-weight:600;border-radius:8px 8px 0 0;min-height:44px;transition:background .15s,color .15s}
+.tab.on{background:var(--bg);color:var(--tab-act)}
+#strip{position:sticky;top:var(--hdr-h);z-index:50;background:var(--strip-bg);display:flex;gap:5px;overflow-x:auto;padding:7px 12px 9px;scrollbar-width:none;align-items:center}
+#strip::-webkit-scrollbar{display:none}
+.chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 9px;border-radius:9px;cursor:pointer;flex-shrink:0;min-width:44px;min-height:44px;gap:1px;background:var(--chip-bg);color:var(--chip-txt);font-size:.68rem;font-weight:600;border:2px solid transparent;transition:background .1s,color .1s}
+.chip .dn{font-size:1rem;font-weight:800;line-height:1.1}
+.chip.today-chip{border-color:var(--chip-ring)}
+.chip.sel{background:var(--chip-sel-bg);color:var(--chip-sel-txt)}
+.chip.we{opacity:var(--chip-we)}
+.panel{display:none}.panel.on{display:block}
+.day-body{padding:12px 12px 32px}
+.day-meta{font-size:.76rem;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.day-meta.is-today{color:var(--tab-act);font-weight:700}
+.today-dot{width:7px;height:7px;border-radius:50%;background:var(--tab-act)}
+.note-banner{background:#fef3c7;border:1px solid #fde68a;color:#78350f;border-radius:10px;padding:8px 12px;font-size:.8rem;margin-bottom:10px;display:flex;align-items:flex-start;gap:7px}
+.cat-group{margin-bottom:9px}
+.cat-hd{display:flex;align-items:center;gap:6px;padding:5px 2px;font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.cat-dot-sm{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-cnt{background:var(--border);color:var(--text3);border-radius:20px;padding:1px 7px;font-size:.65rem;font-weight:700}
+.pcard{background:var(--surface);border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.prow{display:flex;align-items:center;min-height:48px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.prow:last-child{border-bottom:none}
+.bar{width:4px;height:100%;position:absolute;right:0;top:0;flex-shrink:0}
+.pname{padding:10px 12px 10px 6px;font-size:.88rem;color:var(--text2);min-width:70px;flex-shrink:0}
+.prow.det .pname{font-weight:700;color:var(--text)}
+.pval{flex:1;padding:10px 0 10px 12px;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.vtag{font-size:.86rem;font-weight:600;padding:3px 11px;border-radius:20px;white-space:nowrap}
+.ntag{font-size:.7rem;padding:2px 8px;border-radius:20px;background:var(--border);color:var(--text2);white-space:nowrap}
+.det .bar{background:var(--det-bar)}.det .vtag{background:var(--det-bg);color:var(--det-tx)}
+.crt .bar{background:var(--crt-bar)}.crt .vtag{background:var(--crt-bg);color:var(--crt-tx)}
+.onc .bar{background:var(--onc-bar)}.onc .vtag{background:var(--onc-bg);color:var(--onc-tx)}
+.ofc .bar{background:var(--ofc-bar)}.ofc .vtag{background:var(--ofc-bg);color:var(--ofc-tx)}
+.off .bar{background:var(--off-bar)}.off .vtag{background:var(--off-bg);color:var(--off-tx)}
+.oth .bar{background:var(--oth-bar)}.oth .vtag{background:var(--oth-bg);color:var(--oth-tx)}
+.unassigned{margin-top:8px;background:var(--surface);border-radius:10px;padding:10px 13px;font-size:.82rem;color:var(--text3);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.unassigned strong{color:var(--text2)}
+.empty-day{text-align:center;padding:40px 16px;color:var(--text3)}
+.empty-day .eico{font-size:2.4rem;margin-bottom:10px}
+.empty-day p{font-size:.88rem}
+.pers-body{padding:12px 12px 32px}
+.pro-strip{display:flex;overflow-x:auto;gap:7px;padding-bottom:12px;scrollbar-width:none}
+.pro-strip::-webkit-scrollbar{display:none}
+.pro-chip{flex-shrink:0;padding:9px 16px;border-radius:20px;font-size:.84rem;font-weight:600;min-height:40px;background:var(--surface);color:var(--text2);border:2px solid var(--border);transition:background .1s,border-color .1s,color .1s}
+.pro-chip.sel{background:var(--tab-act);color:#fff;border-color:var(--tab-act)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.sbox{background:var(--surface);border-radius:12px;padding:13px 8px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sn{font-size:1.55rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.sl{font-size:.63rem;color:var(--text3);margin-top:4px}
+.sn.b{color:#4f46e5}.sn.g{color:#16a34a}.sn.r{color:#dc2626}
+.dlist{display:flex;flex-direction:column;gap:4px}
+.drow{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:10px 12px;min-height:48px;border:2px solid transparent}
+.drow.is-today{border-color:var(--today-bdr);background:var(--today-bg)}
+.drow.we{opacity:.45}
+.ddate{min-width:54px;font-size:.77rem;font-weight:700;color:var(--text2);flex-shrink:0}
+.dtag{font-size:.82rem;font-weight:600;padding:3px 11px;border-radius:16px}
+.dempty{color:var(--text3);font-size:.85rem}
+.today-lbl{font-size:.6rem;color:var(--tab-act);font-weight:700;display:block;margin-top:1px}
+.det .dtag{background:var(--det-bg);color:var(--det-tx)}
+.crt .dtag{background:var(--crt-bg);color:var(--crt-tx)}
+.onc .dtag{background:var(--onc-bg);color:var(--onc-tx)}
+.ofc .dtag{background:var(--ofc-bg);color:var(--ofc-tx)}
+.off .dtag{background:var(--off-bg);color:var(--off-tx)}
+.oth .dtag{background:var(--oth-bg);color:var(--oth-tx)}
+.tbl-panel{display:flex;flex-direction:column;height:calc(100vh - var(--hdr-h,72px));padding:0}
+.tbl-hint{flex-shrink:0;padding:8px 14px 6px;font-size:.73rem;color:var(--text3);display:flex;align-items:center;gap:4px}
+.tbl-outer{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+table{border-collapse:separate;border-spacing:0;font-size:.78rem;white-space:nowrap}
+thead th{position:sticky;top:0;z-index:22;background:var(--hdr-bg);color:#64748b;padding:10px 14px;font-weight:600;font-size:.7rem;border-bottom:2px solid #1e2a3a}
+th:first-child,td:first-child{position:sticky;right:0;background:var(--surface);border-left:1px solid var(--border)}
+th:first-child{z-index:32;background:var(--hdr-bg);color:#4a5e7a}
+td:first-child{z-index:12;font-weight:700;color:var(--text2)}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text2)}
+.tc-det{background:var(--det-bg)!important;color:var(--det-tx)!important;font-weight:700}
+.tc-crt{background:var(--crt-bg)!important;color:var(--crt-tx)!important}
+.tc-onc{background:var(--onc-bg)!important;color:var(--onc-tx)!important}
+.tc-ofc{background:var(--ofc-bg)!important;color:var(--ofc-tx)!important}
+.tc-off{background:var(--off-bg)!important;color:var(--off-tx)!important}
+.tc-oth{background:var(--oth-bg)!important;color:var(--oth-tx)!important}
+.tc-we{background:var(--surface2)!important;color:var(--text3)!important;font-style:italic}
+.tc-mt{color:var(--text3)}
+tr.tr-today td{background:var(--today-bg)!important}
+tr.tr-today .tc-det{background:var(--det-bg)!important;color:var(--det-tx)!important}
+tr.tr-today .tc-crt{background:var(--crt-bg)!important;color:var(--crt-tx)!important}
+tr.tr-today .tc-onc{background:var(--onc-bg)!important;color:var(--onc-tx)!important}
+tr.tr-today .tc-ofc{background:var(--ofc-bg)!important;color:var(--ofc-tx)!important}
+tr.tr-today .tc-off{background:var(--off-bg)!important;color:var(--off-tx)!important}
+tr.tr-today .tc-oth{background:var(--oth-bg)!important;color:var(--oth-tx)!important}
+tr.tr-today td:first-child{background:var(--today-bg)!important;border-right:3px solid var(--today-bdr)}
+tr.tr-we{opacity:.5}
+.td-dt-n{font-size:.88rem;font-weight:700;color:var(--text)}
+.td-dt-s{font-size:.65rem;color:var(--text3);margin-top:1px;font-weight:400}
+.td-note-s{font-size:.6rem;color:#92400e;margin-top:2px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;padding:13px 14px 0;border-top:1px solid var(--border);margin-top:10px}
+.lgi{display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--text2)}
+.lgd{width:10px;height:10px;border-radius:50%;flex-shrink:0}`;
+  const js = `const PEOPLE=${safeJs(config.prosecutors)};
+const JUDGES=${safeJs(config.judges)};
+const D=${safeJs(dArr)};
+const _now=new Date();
+const todayISO=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+const TODAY_IDX=D.findIndex(function(r){return r[2]===todayISO;});
+const FULL={'א׳':'ראשון','ב׳':'שני','ג׳':'שלישי','ד׳':'רביעי','ה׳':'חמישי','ו׳':'שישי','ש׳':'שבת'};
+const WE=new Set(['ו׳','ש׳']);
+const CAT_ORDER=['crt','det','onc','ofc','oth','off'];
+const CAT_META={det:{label:'ת. עצורים',dot:'var(--det-bar)'},crt:{label:'בית משפט',dot:'var(--crt-bar)'},onc:{label:'כוננות',dot:'var(--onc-bar)'},ofc:{label:'משרד',dot:'var(--ofc-bar)'},off:{label:'היעדרות',dot:'var(--off-bar)'},oth:{label:'אחר',dot:'var(--oth-bar)'}};
+const OFF_VALS=new Set(['חופש','מחלה','יום משפחות']);
+const OFC_VALS=new Set(['משרד','ממונה משרד','ממונה בית משפט','פגישות משרד','ח"ש']);
+function classify(raw){
+  const[v,...rest]=raw.split('|');const val=v.trim();const note=rest.join('|').trim();
+  if(!val)return{cat:'empty',val:'',note:''};
+  if(val==='ת. עצורים')return{cat:'det',val,note};
+  if(val==='כונן בית משפט'||val==='כונן')return{cat:'onc',val,note};
+  for(const j of JUDGES)if(val.includes(j))return{cat:'crt',val,note};
+  if(OFF_VALS.has(val))return{cat:'off',val,note};
+  if(OFC_VALS.has(val)||val.includes('משרד'))return{cat:'ofc',val,note};
+  return{cat:'oth',val,note};
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+let dayIdx=TODAY_IDX>=0?TODAY_IDX:0;
+let perIdx=+(localStorage.getItem('sp')||0);
+if(perIdx>=PEOPLE.length)perIdx=0;
+let tblBuilt=false;
+function buildStrip(){
+  document.getElementById('strip').innerHTML=D.map(([,s],i)=>{
+    const we=WE.has(s),tod=i===TODAY_IDX,sel=i===dayIdx;
+    const n=D[i][0].split(' ')[0];
+    const cls=['chip',we?'we':'',tod?'today-chip':'',sel?'sel':''].filter(Boolean).join(' ');
+    return '<div class="'+cls+'" onclick="selDay('+i+')"><span class="dn">'+n+'</span><span>'+s+'</span></div>';
+  }).join('');
+}
+function centerChip(){
+  const strip=document.getElementById('strip');
+  const sel=strip.children[dayIdx];
+  if(!sel)return;
+  strip.scrollLeft=sel.offsetLeft-strip.offsetWidth/2+sel.offsetWidth/2;
+}
+function renderDay(){
+  const[dt,short,,asgns,note]=D[dayIdx];
+  const we=WE.has(short),tod=dayIdx===TODAY_IDX;
+  let out='';
+  if(tod)out+='<div class="day-meta is-today"><div class="today-dot"></div>היום, '+esc(dt)+'</div>';
+  else out+='<div class="day-meta">'+esc(dt)+' · יום '+esc(FULL[short])+'</div>';
+  if(note)out+='<div class="note-banner">📌 '+esc(note)+'</div>';
+  if(we&&asgns.every(a=>!a.trim())){
+    out+='<div class="empty-day"><div class="eico">🌅</div><p>'+(short==='ש׳'?'שבת שלום':'שישי')+'</p></div>';
+    document.getElementById('day-bd').innerHTML=out;return;
+  }
+  const groups={},unassigned=[];
+  asgns.forEach((raw,pi)=>{
+    const cl=classify(raw);
+    if(!cl.val){if(!we)unassigned.push(PEOPLE[pi]);return;}
+    (groups[cl.cat]=groups[cl.cat]||[]).push({name:PEOPLE[pi],...cl});
+  });
+  const cats=CAT_ORDER.filter(c=>groups[c]);
+  if(!cats.length&&!we)out+='<div class="empty-day"><div class="eico">📭</div><p>אין שיבוצים ליום זה</p></div>';
+  cats.forEach(cat=>{
+    const meta=CAT_META[cat],rows=groups[cat];
+    out+='<div class="cat-group"><div class="cat-hd"><span class="cat-dot-sm" style="background:'+meta.dot+'"></span><span>'+meta.label+'</span><span class="cat-cnt">'+rows.length+'</span></div><div class="pcard">';
+    rows.forEach(r=>{
+      out+='<div class="prow '+cat+'"><div class="bar"></div><div class="pname">'+esc(r.name)+'</div><div class="pval"><span class="vtag">'+esc(r.val)+'</span>'+(r.note?'<span class="ntag">📎 '+esc(r.note)+'</span>':'')+'</div></div>';
     });
-    if (!cards.length) return;
-    judgeSections.push(
-      '<section id="judge-' + ji + '" class="sec"><div class="sh"><h2 class="st">⚖️ ' + esc$1(jName) + '</h2><a href="#top" class="back">הצג הכל ↑</a></div><div class="jdays">' + cards.length + ' ימי דיון</div><div class="mv">' + cards.join("") + "</div></section>"
-    );
+    out+='</div></div>';
   });
-  const thCells = config.prosecutors.map((p) => '<th class="th-p">' + esc$1(p) + "</th>").join("");
-  const trRows = days.map((day, di) => {
-    const isWE = day.isWeekend;
-    const tds = config.prosecutors.map((_, pi) => {
-      const a = getA(di, pi);
-      const cls = classify(a, config.judges);
-      return '<td class="' + (isWE ? "td-we" : "td-" + cls.type) + '">' + (a ? esc$1(a) : "") + "</td>";
-    }).join("");
-    return '<tr class="' + (isWE ? "tr-we" : "") + '"><td class="td-dt"><b>' + day.dayOfMonth + "</b> " + HE_DOW_NAMES[day.dayOfWeek] + "</td>" + tds + "</tr>";
-  }).join("");
-  const proBtns = config.prosecutors.map((p, i) => '<a href="#pro-' + i + '" class="nb np">' + esc$1(p) + "</a>").join("\n      ");
-  const judgeBtns = config.judges.map((j, i) => '<a href="#judge-' + i + '" class="nb nj">' + esc$1(j) + "</a>").join("\n      ");
-  const css = `
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;padding-bottom:40px}
-a{text-decoration:none;color:inherit}
-
-/* ── top section (nav + full table) ── */
-#top{background:#1a1a2e;padding:16px 16px 20px}
-.hdr{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.htitle{color:#fff;font-size:1.05rem;font-weight:800}
-.hmeta{color:#8892b0;font-size:.75rem;margin-top:2px}
-.nav{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
-.ng{display:flex;flex-direction:column;gap:6px}
-.nl{color:#8892b0;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.nb{display:inline-block;padding:8px 16px;border-radius:22px;font-size:.85rem;font-weight:700;white-space:nowrap;margin:3px 3px 3px 0;-webkit-tap-highlight-color:transparent}
-.np{background:#312e81;color:#c7d2fe}
-.nj{background:#064e3b;color:#6ee7b7}
-.ft-hdr{color:#fff;font-size:.95rem;font-weight:700;margin-bottom:10px}
-.ft-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
-.ft{width:100%;border-collapse:collapse;font-size:.8rem;background:#fff;min-width:320px}
-.ft th,.ft td{padding:7px 10px;border-bottom:1px solid #f3f4f6;text-align:right;white-space:nowrap}
-.th-d{background:#0f172a;color:#94a3b8;width:90px;font-weight:600;font-size:.75rem}
-.th-p{background:#0f172a;color:#c7d2fe;font-weight:600;font-size:.75rem}
-.td-dt{font-weight:700;color:#374151;background:#f8fafc}
-.tr-we .td-dt{color:#9ca3af}
-.td-we{color:#9ca3af;font-style:italic}
-.td-mishrad{color:#4338ca}
-.td-raid{color:#059669;font-weight:600}
-.td-mazkirut{color:#be185d}
-.td-ivun{color:#7c3aed}
-.td-special{color:#dc2626;font-weight:600}
-.td-empty{color:#d1d5db}
-
-/* ── content sections ── */
-.sec{padding:16px;max-width:680px;margin:0 auto}
-.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
-.st{font-size:1.05rem;font-weight:800;color:#1a1a2e}
-.back{font-size:.78rem;color:#6366f1;font-weight:700;padding:6px 12px;background:#ede9fe;border-radius:20px;-webkit-tap-highlight-color:transparent}
-.jdays{font-size:.8rem;color:#6b7280;margin-bottom:10px}
-
-/* ── stats bar ── */
-.sb{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.sc{background:#fff;border-radius:10px;padding:10px 12px;flex:1;min-width:60px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-align:center}
-.sn{font-size:1.35rem;font-weight:800;color:#2563eb;line-height:1}
-.sn.g{color:#10b981}
-.sn.s{color:#f59e0b}
-.sl{font-size:.63rem;color:#9ca3af;margin-top:3px}
-
-/* ── day cards ── */
-.mv{display:flex;flex-direction:column;gap:5px}
-.dc{background:#fff;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-right:4px solid #e5e7eb}
-.dc.shabbat{background:#f9fafb;border-right-color:#d1d5db;opacity:.5}
-.dc.type-mishrad{border-right-color:#6366f1}
-.dc.type-raid{border-right-color:#10b981}
-.dc.type-mazkirut{border-right-color:#ec4899}
-.dc.type-ivun{border-right-color:#8b5cf6}
-.dc.type-special{border-right-color:#ef4444}
-.dc.type-empty{border-right-color:#e5e7eb}
-.dd{min-width:44px;text-align:center;flex-shrink:0}
-.dow{font-size:.62rem;color:#9ca3af;font-weight:600}
-.dn{font-size:1.2rem;font-weight:800;line-height:1.1}
-.ds{width:1px;height:30px;background:#f3f4f6;flex-shrink:0}
-.dc-body{flex:1;min-width:0}
-.asgn{font-size:.93rem;font-weight:700}
-.dim{font-size:.85rem;color:#9ca3af}
-.badge{font-size:.62rem;padding:2px 7px;border-radius:20px;font-weight:600;display:inline-block;margin-top:3px;white-space:nowrap}
-.badge-mishrad{background:#ede9fe;color:#5b21b6}
-.badge-raid{background:#d1fae5;color:#065f46}
-.badge-mazkirut{background:#fce7f3;color:#9d174d}
-.badge-ivun{background:#ede9fe;color:#6b21a8}
-.badge-special{background:#fee2e2;color:#991b1b}
-.badge-judge{background:#fef9c3;color:#854d0e}
-.ptag{display:inline-block;background:#dbeafe;color:#1e40af;border-radius:12px;padding:3px 9px;font-size:.78rem;font-weight:600;margin:2px}
-
-/* ── divider ── */
-.div{height:1px;background:#e5e7eb;margin:0 16px}
-  `.trim();
-  const sectionsHtml = [
-    ...proSections,
-    ...judgeSections
-  ].join('\n<div class="div"></div>\n');
-  return '<!DOCTYPE html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>סידור ' + esc$1(range) + "</title>\n<style>\n" + css + '\n</style>\n</head>\n<body>\n<div id="top">\n  <div class="hdr">\n    <div><div class="htitle">📋 סידור ' + esc$1(range) + '</div><div class="hmeta">' + ver + " · " + esc$1(config.unit_name) + '</div></div>\n  </div>\n  <div class="nav">\n    <div class="ng"><div class="nl">לפי תובע</div>\n      ' + proBtns + "\n    </div>\n" + (config.judges.length > 0 ? '    <div class="ng"><div class="nl">לפי שופט</div>\n      ' + judgeBtns + "\n    </div>\n" : "") + '  </div>\n  <div class="ft-hdr">📊 טבלה מלאה</div>\n  <div class="ft-wrap">\n    <table class="ft">\n      <thead><tr><th class="th-d">תאריך</th>' + thCells + "</tr></thead>\n      <tbody>" + trRows + "</tbody>\n    </table>\n  </div>\n</div>\n" + sectionsHtml + "\n</body>\n</html>";
+  if(unassigned.length)out+='<div class="unassigned"><strong>ללא שיבוץ:</strong> '+unassigned.map(esc).join(' · ')+'</div>';
+  document.getElementById('day-bd').innerHTML=out;
+}
+function renderPersonal(){
+  const pi=perIdx;let work=0,court=0,abs=0;
+  D.forEach(([,s,,a])=>{
+    if(WE.has(s))return;
+    const cl=classify(a[pi]);if(!cl.val)return;
+    work++;if(cl.cat==='crt')court++;if(cl.cat==='off')abs++;
+  });
+  let out='<div class="pro-strip">';
+  PEOPLE.forEach((p,i)=>{out+='<button class="pro-chip'+(i===pi?' sel':'')+'" onclick="selPer('+i+')">'+esc(p)+'</button>';});
+  out+='</div><div class="stats"><div class="sbox"><div class="sn b">'+work+'</div><div class="sl">ימי עבודה</div></div><div class="sbox"><div class="sn g">'+court+'</div><div class="sl">ימי ב״מ</div></div><div class="sbox"><div class="sn r">'+abs+'</div><div class="sl">היעדרויות</div></div></div><div class="dlist">';
+  D.forEach(([dt,short,,asgns],i)=>{
+    const we=WE.has(short),tod=i===TODAY_IDX;
+    const cl=classify(asgns[pi]);
+    const rowCls=['drow',tod?'is-today':'',we?'we':'',cl.cat&&cl.cat!=='empty'?cl.cat:''].filter(Boolean).join(' ');
+    const valHtml=cl.val?'<span class="dtag">'+esc(cl.val)+(cl.note?' · '+esc(cl.note):'')+'</span>':'<span class="dempty">'+(we?(short==='ש׳'?'שבת':'שישי'):'—')+'</span>';
+    out+='<div class="'+rowCls+'"><div class="ddate">'+esc(dt.split(' ')[0])+' '+short+(tod?'<span class="today-lbl">היום</span>':'')+'</div><div>'+valHtml+'</div></div>';
+  });
+  out+='</div>';
+  document.getElementById('per-bd').innerHTML=out;
+}
+function renderTable(){
+  if(tblBuilt)return;tblBuilt=true;
+  let out='<div class="tbl-hint">↔ גלול לצדדים — עמודת התאריך נשארת</div><div class="tbl-outer"><table><thead><tr><th>תאריך</th>'+PEOPLE.map(p=>'<th>'+esc(p)+'</th>').join('')+'</tr></thead><tbody>';
+  D.forEach(([dt,short,,asgns,note],i)=>{
+    const we=WE.has(short),tod=i===TODAY_IDX;
+    const trCls=tod?'tr-today':we?'tr-we':'';
+    out+='<tr'+(trCls?' class="'+trCls+'"':'')+'>'+
+      '<td><div class="td-dt-n">'+esc(dt)+'</div><div class="td-dt-s">יום '+esc(FULL[short])+(tod?' · <strong>היום</strong>':'')+'</div>'+(note?'<div class="td-note-s">📌 '+esc(note)+'</div>':'')+'</td>';
+    asgns.forEach(raw=>{
+      const cl=classify(raw);
+      let cls='tc-mt';
+      if(we)cls='tc-we';else if(cl.cat&&cl.cat!=='empty')cls='tc-'+cl.cat;
+      const disp=cl.val?esc(cl.val)+(cl.note?'<div style="font-size:.6rem;opacity:.75">'+esc(cl.note)+'</div>':''):(we?(short==='ש׳'?'שבת':'שישי'):'');
+      out+='<td class="'+cls+'">'+disp+'</td>';
+    });
+    out+='</tr>';
+  });
+  out+='</tbody></table></div>';
+  document.getElementById('tbl-bd').innerHTML=out;
+}
+function selDay(i){
+  dayIdx=i;
+  document.querySelectorAll('#strip .chip').forEach((c,j)=>{c.classList.toggle('sel',j===i);});
+  centerChip();renderDay();
+}
+function selPer(i){perIdx=i;localStorage.setItem('sp',i);renderPersonal();}
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
+  document.querySelectorAll('.panel').forEach(el=>el.classList.toggle('on',el.id==='tab-'+t));
+  document.getElementById('strip').style.display=t==='day'?'flex':'none';
+  if(t==='day'){renderDay();centerChip();}
+  if(t==='personal')renderPersonal();
+  if(t==='table')renderTable();
+  setHdrH();
+}
+function setHdrH(){document.documentElement.style.setProperty('--hdr-h',document.getElementById('hdr').offsetHeight+'px');}
+let tx0=null;
+const dp=document.getElementById('tab-day');
+dp.addEventListener('touchstart',e=>{tx0=e.touches[0].clientX;},{passive:true});
+dp.addEventListener('touchend',e=>{
+  if(tx0===null)return;
+  const dx=e.changedTouches[0].clientX-tx0;tx0=null;
+  if(Math.abs(dx)<50)return;
+  const ni=dx>0?dayIdx-1:dayIdx+1;
+  if(ni>=0&&ni<D.length)selDay(ni);
+},{passive:true});
+setHdrH();buildStrip();renderDay();centerChip();
+window.addEventListener('resize',setHdrH);`;
+  const body = [
+    '<header id="hdr">',
+    '  <div class="hdr-top">',
+    "    <div>",
+    `      <div class="hdr-title">📋 ${esc$1(range)}</div>`,
+    `      <div class="hdr-meta">גרסה ${schedule.version} · ${esc$1(config.unit_name)}</div>`,
+    "    </div>",
+    "  </div>",
+    '  <div style="padding:0 12px">',
+    '    <nav class="tabs">',
+    `      <button class="tab on" data-t="day" onclick="switchTab('day')">יום</button>`,
+    `      <button class="tab" data-t="personal" onclick="switchTab('personal')">אישי</button>`,
+    `      <button class="tab" data-t="table" onclick="switchTab('table')">טבלה מלאה</button>`,
+    "    </nav>",
+    "  </div>",
+    "</header>",
+    '<div id="strip"></div>',
+    "<main>",
+    '  <div id="tab-day" class="panel on"><div class="day-body" id="day-bd"></div></div>',
+    '  <div id="tab-personal" class="panel"><div class="pers-body" id="per-bd"></div></div>',
+    '  <div id="tab-table" class="panel"><div class="tbl-panel" id="tbl-bd"></div></div>',
+    "</main>"
+  ].join("\n");
+  return [
+    "<!DOCTYPE html>",
+    '<html lang="he" dir="rtl">',
+    "<head>",
+    '<meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">',
+    "<title>סידור עבודה</title>",
+    '<meta property="og:title" content="סידור עבודה">',
+    `<meta property="og:description" content="${esc$1(config.unit_name)}">`,
+    `<link rel="apple-touch-icon" href="data:image/png;base64,${APP_ICON_B64}">`,
+    `<link rel="icon" type="image/png" href="data:image/png;base64,${APP_ICON_B64}">`,
+    '<meta name="apple-mobile-web-app-capable" content="yes">',
+    '<meta name="apple-mobile-web-app-title" content="סידור עבודה">',
+    `<style>${css}</style>`,
+    config.schedulePassword ? passwordScript(config.schedulePassword) : "",
+    "</head>",
+    "<body>",
+    body,
+    "<script>" + js + "<\/script>",
+    "</body>",
+    "</html>"
+  ].join("\n");
 }
 const COPYRIGHT = "כל הזכויות שמורות לאוהד לוי | תביעות תעבורה © 2026";
 function esc(s) {
@@ -13326,9 +14458,9 @@ function generatePDF(schedule, config) {
       const v = getCell(di, pi);
       const cls = rowClass(v, day.isWeekend);
       const dateStr = `${day.dayOfMonth} ${HEBREW_MONTHS[day.month - 1]}`;
-      const dayName = HEBREW_DAYS[day.dayOfWeek];
+      const dayName2 = HEBREW_DAYS[day.dayOfWeek];
       const assign2 = v ? esc(v.label) : "";
-      return `<tr class="${cls}"><td>${esc(dateStr)}</td><td>${esc(dayName)}</td><td>${assign2}</td></tr>`;
+      return `<tr class="${cls}"><td>${esc(dateStr)}</td><td>${esc(dayName2)}</td><td>${assign2}</td></tr>`;
     }).join("\n");
     return `<div class="page">
 <div class="ph">
@@ -13406,20 +14538,100 @@ function getCellColor(val, isWeekend) {
   if (val.label === "משרד") return "cell-office";
   return "cell-general";
 }
+function parseConstraintsCSV(csv, prosecutors, days) {
+  const lines = csv.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return {};
+  const headers = splitCSVLine(lines[0]);
+  const constraints = {};
+  for (let li = 1; li < lines.length; li++) {
+    const cells = splitCSVLine(lines[li]);
+    const rawDate = cells[0]?.trim();
+    if (!rawDate) continue;
+    const date = normalizeDate(rawDate);
+    if (!date) continue;
+    const dayIdx = days.findIndex((d) => d.date === date);
+    if (dayIdx === -1) continue;
+    for (let ci = 1; ci < headers.length; ci++) {
+      const empName = headers[ci]?.trim();
+      const label = cells[ci]?.trim();
+      if (!empName || !label) continue;
+      const proIdx = prosecutors.findIndex((p) => p.trim() === empName);
+      if (proIdx === -1) continue;
+      constraints[`${dayIdx}-${proIdx}`] = { label, status: "pending" };
+    }
+  }
+  return constraints;
+}
+function splitCSVLine(line) {
+  const out = [];
+  let cur = "", inQuote = false;
+  for (const ch of line) {
+    if (ch === '"') {
+      inQuote = !inQuote;
+    } else if (ch === "," && !inQuote) {
+      out.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+function normalizeDate(raw) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  return null;
+}
+const PARTIAL_CONSTRAINT_TAGS = {
+  "יוצא מוקדם": { abbr: "י.מ", color: "partial-early-out" },
+  "מגיע מאוחר": { abbr: "מ.א", color: "partial-late-in" },
+  "עבודה מהבית": { abbr: "בית", color: "partial-home" }
+};
+const PARTIAL_LABELS = Object.keys(PARTIAL_CONSTRAINT_TAGS);
+function buildFormUrl(schedule, config) {
+  const base = "https://ohadl19-ol.github.io/taavoura-constraints/";
+  const params = new URLSearchParams({
+    start: schedule.startDate,
+    end: schedule.endDate,
+    names: config.prosecutors.join(","),
+    title: `סידור ${rangeLabel(schedule.startDate, schedule.endDate)}`,
+    script: config.constraintsScriptUrl ?? ""
+  });
+  return `${base}?${params.toString()}`;
+}
 function ScheduleEditor({ scheduleId, config, onBack }) {
   const { schedule, setSchedule, undo, redo, canUndo, canRedo } = useSchedule(scheduleId);
   const [activeCell, setActiveCell] = reactExports.useState(null);
   const [fillColumnIdx, setFillColumnIdx] = reactExports.useState(null);
   const [exporting, setExporting] = reactExports.useState(false);
   const [exportingPdf, setExportingPdf] = reactExports.useState(false);
+  const [exportingExcel, setExportingExcel] = reactExports.useState(false);
+  const [pagesPublishing, setPagesPublishing] = reactExports.useState(false);
+  const [pagesLink, setPagesLink] = reactExports.useState(null);
+  const [pagesVerified, setPagesVerified] = reactExports.useState(null);
+  const [showLinkModal, setShowLinkModal] = reactExports.useState(false);
+  const [showImport, setShowImport] = reactExports.useState(false);
+  const [showJudgeLoad, setShowJudgeLoad] = reactExports.useState(false);
+  const { saveConfig } = useConfig();
+  const [importError, setImportError] = reactExports.useState(null);
+  const [editingDayNote, setEditingDayNote] = reactExports.useState(null);
+  const [dayNoteInput, setDayNoteInput] = reactExports.useState("");
   const cellRef = reactExports.useRef(null);
   const fillBtnRefs = reactExports.useRef([]);
+  const fileInputRef = reactExports.useRef(null);
   const days = schedule ? getDaysForSchedule(schedule.startDate, schedule.endDate) : [];
   const workdays = days.filter((d) => !d.isWeekend).length;
   const loadCounts = config.prosecutors.map(
     (_, proIdx) => days.filter((day, dayIdx) => !day.isWeekend && (schedule?.assignments[`${dayIdx}-${proIdx}`] ?? null) !== null).length
   );
   const avgLoad = config.prosecutors.length > 0 ? loadCounts.reduce((a, b) => a + b, 0) / config.prosecutors.length : 0;
+  const loadInfo = schedule ? analyzeLoad(schedule, config, days) : null;
+  const loadIssues = loadInfo ? loadInfo.uncovered.length + loadInfo.idleCells.size + loadInfo.busy.length : 0;
+  const shortDay = (dayIdx) => {
+    const d = days[dayIdx];
+    return `${HEBREW_DAYS[d.dayOfWeek]} ${d.dayOfMonth}.${d.month}`;
+  };
+  const pendingCount = schedule?.constraints ? Object.values(schedule.constraints).filter((c) => c.status === "pending").length : 0;
   reactExports.useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
@@ -13438,6 +14650,18 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
   const getCell = (dayIdx, proIdx) => {
     if (!schedule) return null;
     return schedule.assignments[getCellKey(dayIdx, proIdx)] ?? null;
+  };
+  const getConstraint = (dayIdx, proIdx) => schedule?.constraints?.[getCellKey(dayIdx, proIdx)];
+  const dayConstraintSummary = (dayIdx) => {
+    if (!schedule?.constraints) return {};
+    const counts = {};
+    config.prosecutors.forEach((_, proIdx) => {
+      const c = schedule.constraints[`${dayIdx}-${proIdx}`];
+      if (c && c.status === "pending") {
+        counts[c.label] = (counts[c.label] ?? 0) + 1;
+      }
+    });
+    return counts;
   };
   const handleCellClick = (dayIdx, proIdx, el) => {
     if (activeCell?.dayIdx === dayIdx && activeCell?.proIdx === proIdx) {
@@ -13460,8 +14684,7 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
     setSchedule({ ...schedule, assignments: newAssignments });
     const nextPro = activeCell.proIdx + 1;
     if (nextPro < config.prosecutors.length) {
-      const nextKey = `cell-${activeCell.dayIdx}-${nextPro}`;
-      const el = document.getElementById(nextKey);
+      const el = document.getElementById(`cell-${activeCell.dayIdx}-${nextPro}`);
       if (el) {
         cellRef.current = el;
         setActiveCell({ dayIdx: activeCell.dayIdx, proIdx: nextPro });
@@ -13470,6 +14693,56 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
       setActiveCell(null);
     }
   }, [schedule, activeCell, config.prosecutors.length, setSchedule]);
+  const handleSubNote = reactExports.useCallback((note) => {
+    if (!schedule || !activeCell) return;
+    const key = getCellKey(activeCell.dayIdx, activeCell.proIdx);
+    const val = schedule.assignments[key];
+    if (!val) return;
+    const updated = note ? { ...val, subNote: note } : { ...val, subNote: void 0 };
+    setSchedule({ ...schedule, assignments: { ...schedule.assignments, [key]: updated } });
+  }, [schedule, activeCell, setSchedule]);
+  const handleDayNoteClick = (dayIdx) => {
+    if (!schedule) return;
+    setDayNoteInput(schedule.dayNotes?.[dayIdx] ?? "");
+    setEditingDayNote(dayIdx);
+    setActiveCell(null);
+  };
+  const handleDayNoteSave = () => {
+    if (!schedule || editingDayNote === null) return;
+    const newNotes = { ...schedule.dayNotes ?? {} };
+    if (dayNoteInput.trim()) {
+      newNotes[editingDayNote] = dayNoteInput.trim();
+    } else {
+      delete newNotes[editingDayNote];
+    }
+    setSchedule({ ...schedule, dayNotes: newNotes });
+    setEditingDayNote(null);
+  };
+  const handleApprove = reactExports.useCallback(() => {
+    if (!schedule || !activeCell) return;
+    const key = getCellKey(activeCell.dayIdx, activeCell.proIdx);
+    const constraint = schedule.constraints?.[key];
+    if (!constraint) return;
+    const newConstraints = { ...schedule.constraints, [key]: { ...constraint, status: "approved" } };
+    if (PARTIAL_LABELS.includes(constraint.label)) {
+      const newPartial = { ...schedule.partialConstraints ?? {}, [key]: constraint.label };
+      setSchedule({ ...schedule, constraints: newConstraints, partialConstraints: newPartial });
+    } else {
+      const newAssignments = { ...schedule.assignments, [key]: { category: "general", label: constraint.label } };
+      setSchedule({ ...schedule, assignments: newAssignments, constraints: newConstraints });
+    }
+    setActiveCell(null);
+  }, [schedule, activeCell, setSchedule]);
+  const handleReject = reactExports.useCallback(() => {
+    if (!schedule || !activeCell) return;
+    const key = getCellKey(activeCell.dayIdx, activeCell.proIdx);
+    const newConstraints = { ...schedule.constraints };
+    delete newConstraints[key];
+    const newPartial = { ...schedule.partialConstraints ?? {} };
+    delete newPartial[key];
+    setSchedule({ ...schedule, constraints: newConstraints, partialConstraints: newPartial });
+    setActiveCell(null);
+  }, [schedule, activeCell, setSchedule]);
   const handleFillColumnSelect = reactExports.useCallback((val) => {
     if (!schedule || fillColumnIdx === null) return;
     const newAssignments = { ...schedule.assignments };
@@ -13490,6 +14763,29 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
     setActiveCell(null);
     cellRef.current = e.currentTarget;
     setFillColumnIdx((prev) => prev === proIdx ? null : proIdx);
+  };
+  const handleImportCSV = (e) => {
+    setImportError(null);
+    const file = e.target.files?.[0];
+    if (!file || !schedule) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const csv = ev.target?.result;
+        const imported = parseConstraintsCSV(csv, config.prosecutors, days);
+        const count = Object.keys(imported).length;
+        const merged = { ...schedule.constraints };
+        Object.entries(imported).forEach(([k, v]) => {
+          if (!merged[k] || merged[k].status === "pending") merged[k] = v;
+        });
+        setSchedule({ ...schedule, constraints: merged });
+        if (count === 0) setImportError("לא נמצאו אילוצים בקובץ — בדוק שהעמודות תואמות לשמות התובעים");
+      } catch {
+        setImportError("שגיאה בקריאת הקובץ — ודא שמדובר בקובץ CSV תקני");
+      }
+    };
+    reader.readAsText(file, "utf-8");
+    e.target.value = "";
   };
   const handleExport = async () => {
     if (!schedule) return;
@@ -13513,6 +14809,74 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
       setExportingPdf(false);
     }
   };
+  const handlePagesPublish = async () => {
+    if (!schedule || !config.githubToken) return;
+    setPagesPublishing(true);
+    setPagesLink(null);
+    setPagesVerified(null);
+    try {
+      const html = generateHTML(schedule, config);
+      const { url, verified } = await window.api.pages.publish(config.githubToken, html);
+      setPagesLink(url);
+      setPagesVerified(verified);
+    } catch (e) {
+      alert("שגיאה בפרסום: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setPagesPublishing(false);
+    }
+  };
+  const handleExportExcel = async () => {
+    if (!schedule) return;
+    setExportingExcel(true);
+    try {
+      const headers = ["תאריך", "יום", ...config.prosecutors];
+      const rows = days.map((day, di) => {
+        const month = HEBREW_MONTHS[day.month - 1];
+        const dateStr = `${day.dayOfMonth} ${month}`;
+        const dayName2 = HEBREW_DAYS[day.dayOfWeek];
+        const cells = config.prosecutors.map((_, pi) => {
+          const val = schedule.assignments[`${di}-${pi}`];
+          const note = val?.subNote ? ` (${val.subNote})` : "";
+          return val ? val.label + note : "";
+        });
+        return [dateStr, dayName2, ...cells];
+      });
+      const filename = `סידור-${config.branch}-${schedule.startDate}.xlsx`;
+      await window.api.export.excel(filename, headers, rows);
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+  const handleExportTemplate = async () => {
+    if (!schedule) return;
+    const options = [.../* @__PURE__ */ new Set([
+      ...config.judges,
+      "ת. עצורים",
+      ...config.generalOptions ?? GENERAL_OPTIONS,
+      ...SUPERVISOR_OPTIONS
+    ])];
+    const rows = days.map((day, di) => ({
+      date: `${String(day.dayOfMonth).padStart(2, "0")}.${String(day.month).padStart(2, "0")}.${String(day.year).slice(2)}`,
+      day: HEBREW_DAYS[day.dayOfWeek],
+      weekend: day.isWeekend,
+      sittings: loadInfo ? sittingsText(loadInfo, di) : void 0,
+      cells: config.prosecutors.map((_, pi) => {
+        const v = schedule.assignments[`${di}-${pi}`];
+        return v ? v.label + (v.subNote ? ` (${v.subNote})` : "") : "";
+      })
+    }));
+    await window.api.export.template({
+      filename: `תבנית-סידור-${config.branch.trim()}-${schedule.startDate}.xlsx`,
+      title: `סידור עבודה ${config.branch.trim()} — ${rangeLabel(schedule.startDate, schedule.endDate)}`,
+      prosecutors: config.prosecutors,
+      rows,
+      options
+    });
+  };
+  const handleAddOptions = (labels) => {
+    const current = config.generalOptions ?? GENERAL_OPTIONS;
+    saveConfig({ ...config, generalOptions: [...current, ...labels.filter((l) => !current.includes(l))] });
+  };
   if (!schedule) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "screen", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "loading", children: "טוען…" }) });
   }
@@ -13527,9 +14891,147 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header-actions", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost btn-undo", onClick: undo, disabled: !canUndo, title: "בטל (Ctrl+Z)", children: "↺" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost btn-undo", onClick: redo, disabled: !canRedo, title: "חזור (Ctrl+Y)", children: "↻" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-secondary", onClick: () => setShowImport(true), title: "עדכון הסידור מטבלת Excel / הדבקה", children: "📋 ייבוא סידור" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            className: "btn btn-secondary",
+            onClick: () => setShowJudgeLoad(true),
+            title: "מספר הדיונים לכל שופט מנט המשפט — מוצג רק כאן ובתבנית למכין, לא בסידור לתובעים",
+            children: [
+              "⚖️ יומן שופטים",
+              loadIssues > 0 ? ` (${loadIssues})` : ""
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-secondary", onClick: handleExportTemplate, title: "קובץ Excel עם רשימות נפתחות — לשליחה למי שמכין את הסידור", children: "📤 תבנית למכין הסידור" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            ref: fileInputRef,
+            type: "file",
+            accept: ".csv",
+            style: { display: "none" },
+            onChange: handleImportCSV
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: "btn btn-secondary btn-constraints-import",
+            onClick: () => fileInputRef.current?.click(),
+            title: "ייבא אילוצים מ-CSV של Google Sheets",
+            children: pendingCount > 0 ? `📥 אילוצים (${pendingCount})` : "📥 ייבא אילוצים"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: "btn btn-secondary",
+            onClick: () => setShowLinkModal(true),
+            title: "הפק קישור לטופס אילוצים לעובדים",
+            children: "🔗 קישור לעובדים"
+          }
+        ),
+        config.githubToken && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-drive", onClick: handlePagesPublish, disabled: pagesPublishing, children: pagesPublishing ? "מפרסם…" : "🌐 פרסם" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-success", onClick: handleExport, disabled: exporting, children: exporting ? "מייצא…" : "⬇ HTML" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-excel", onClick: handleExportExcel, disabled: exportingExcel, children: exportingExcel ? "מייצא…" : "📊 Excel" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-primary", onClick: handleExportPdf, disabled: exportingPdf, children: exportingPdf ? "מייצא…" : "📄 PDF" })
       ] })
+    ] }),
+    pagesLink && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "drive-success-bar", style: { flexDirection: "column", alignItems: "flex-start", gap: 6 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8, width: "100%" }, children: [
+        pagesVerified === true && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#16a34a", fontWeight: 700 }, children: "✅ הסידור עלה בהצלחה לגיטהאב" }),
+        pagesVerified === false && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#dc2626", fontWeight: 700 }, children: "⚠️ הועלה אך האימות נכשל — נסה שוב" }),
+        pagesVerified === null && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#d97706", fontWeight: 700 }, children: "⏳ מאמת…" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+          setPagesLink(null);
+          setPagesVerified(null);
+        }, style: { marginRight: "auto" }, children: "✕" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        "הקישור הועתק ללוח:",
+        " ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("a", { href: "#", onClick: (e) => {
+          e.preventDefault();
+          window.open(pagesLink);
+        }, style: { color: "#1d4ed8", fontWeight: 600 }, children: pagesLink })
+      ] }),
+      pagesVerified && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "0.78rem", color: "#6b7280" }, children: "ייתכן שייקח 2-3 דקות עד שהשינוי יופיע בלינק — רענן את הדף אם רואים גרסה ישנה" })
+    ] }),
+    importError && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "import-error-bar", children: [
+      "⚠️ ",
+      importError,
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setImportError(null), children: "✕" })
+    ] }),
+    loadInfo && loadIssues > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { className: "judge-load-bar", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("summary", { children: [
+        "⚖️ יומן שופטים:",
+        loadInfo.uncovered.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          " ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: loadInfo.uncovered.length }),
+          " ישיבות בלי תובע"
+        ] }),
+        loadInfo.idleCells.size > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          " · ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: loadInfo.idleCells.size }),
+          " שיבוצים לשופט שלא יושב"
+        ] }),
+        loadInfo.busy.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          " · ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: loadInfo.busy.length }),
+          " ימים עמוסים עם תובע אחד"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "judge-load-bar-hint", children: " (לחץ לפירוט)" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { children: [
+        loadInfo.uncovered.map(({ dayIdx, ds }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+          "🔴 ",
+          shortDay(dayIdx),
+          " — ",
+          ds.labels[0],
+          " יושב/ת (",
+          ds.sitting.total,
+          " דיונים) ואין תובע"
+        ] }, `u${dayIdx}${ds.key}`)),
+        [...loadInfo.idleCells.entries()].map(([key, why]) => {
+          const [d, p] = key.split("-").map(Number);
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+            "🟠 ",
+            shortDay(d),
+            " — ",
+            config.prosecutors[p],
+            ": ",
+            why
+          ] }, `i${key}`);
+        }),
+        loadInfo.busy.map(({ dayIdx, ds }) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+          "🟡 ",
+          shortDay(dayIdx),
+          " — ",
+          ds.labels[0],
+          ": ",
+          ds.sitting.total,
+          " דיונים (",
+          breakdown(ds.sitting),
+          ") עם ",
+          config.prosecutors[ds.prosecutors[0]],
+          " בלבד"
+        ] }, `b${dayIdx}${ds.key}`))
+      ] })
+    ] }),
+    pendingCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "constraints-info-bar", children: [
+      "⚠️ יש ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: pendingCount }),
+      " אילוצים ממתינים לאישור — לחץ על תא מסומן כדי לאשר או לדחות"
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "partial-legend", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "legend-title", children: "מקרא:" }),
+      Object.entries(PARTIAL_CONSTRAINT_TAGS).map(([label, { abbr, color }]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `legend-item partial-tag ${color}`, children: [
+        abbr,
+        " = ",
+        label
+      ] }, label))
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-wrapper", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "schedule-table", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
@@ -13561,29 +15063,104 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
                 "/",
                 workdays
               ] }),
+              loadInfo && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "pro-hearings", title: "דיונים לפי יומן השופטים (כששני תובעים על אותו שופט — מתחלק). רק לך — לא בסידור לתובעים", children: [
+                "⚖️ ",
+                loadInfo.proHearings[proIdx]
+              ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pro-bar", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pro-bar-fill", style: { width: `${pct}%`, background: barColor } }) })
             ] })
           ] }, p);
         })
       ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: days.map((day, dayIdx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: day.isWeekend ? "weekend-row" : "", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "td-day", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "day-label", children: dayLabel(day, days[dayIdx - 1]?.month) }) }),
-        config.prosecutors.map((_, proIdx) => {
-          const val = getCell(dayIdx, proIdx);
-          const isActive = activeCell?.dayIdx === dayIdx && activeCell?.proIdx === proIdx;
-          const cellId = `cell-${dayIdx}-${proIdx}`;
-          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: days.map((day, dayIdx) => {
+        const summary = dayConstraintSummary(dayIdx);
+        const hasDaySummary = Object.keys(summary).length > 0;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: day.isWeekend ? "weekend-row" : "", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
             "td",
             {
-              id: cellId,
-              className: `td-cell ${getCellColor(val, day.isWeekend)} ${isActive ? "cell-active" : ""} ${day.isWeekend ? "weekend-cell" : ""}`,
-              onClick: (e) => handleCellClick(dayIdx, proIdx, e.currentTarget),
-              children: val && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `cell-text ${day.isWeekend && val.label === "ת. עצורים" ? "cell-text-weekend-detention" : ""}`, children: val.label })
-            },
-            proIdx
-          );
-        })
-      ] }, dayIdx)) })
+              className: "td-day",
+              onClick: () => !day.isWeekend && handleDayNoteClick(dayIdx),
+              style: { cursor: day.isWeekend ? "default" : "pointer" },
+              title: day.isWeekend ? void 0 : "לחץ להוספת הערה ליום",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "day-label", children: dayLabel(day, days[dayIdx - 1]?.month) }),
+                editingDayNote === dayIdx ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "day-note-edit", onClick: (e) => e.stopPropagation(), children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "input",
+                  {
+                    autoFocus: true,
+                    className: "day-note-input",
+                    value: dayNoteInput,
+                    onChange: (e) => setDayNoteInput(e.target.value),
+                    onKeyDown: (e) => {
+                      if (e.key === "Enter") handleDayNoteSave();
+                      if (e.key === "Escape") setEditingDayNote(null);
+                    },
+                    onBlur: handleDayNoteSave,
+                    placeholder: "הערה ליום…"
+                  }
+                ) }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  loadInfo?.loadedDays.has(dayIdx) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "day-sittings", children: (loadInfo.perDay.get(dayIdx) ?? []).length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "sit-none", children: "אין ישיבות" }) : (loadInfo.perDay.get(dayIdx) ?? []).map((ds) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      className: `sit ${ds.prosecutors.length === 0 ? "sit-uncovered" : ""}`,
+                      title: `${keyJudge(ds.key)} · ${shortCourt(keyCourt(ds.key))}
+${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? "\nאין תובע!" : ""}`,
+                      children: [
+                        ds.labels[0],
+                        " ",
+                        ds.sitting.total
+                      ]
+                    },
+                    ds.key
+                  )) }),
+                  schedule?.dayNotes?.[dayIdx] && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "day-note-badge", children: schedule.dayNotes[dayIdx] }),
+                  hasDaySummary && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "day-constraint-summary", children: Object.entries(summary).map(([label, count]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "day-constraint-badge", children: [
+                    count > 1 ? `${count}× ` : "",
+                    label
+                  ] }, label)) })
+                ] })
+              ]
+            }
+          ),
+          config.prosecutors.map((_, proIdx) => {
+            const key = getCellKey(dayIdx, proIdx);
+            const val = getCell(dayIdx, proIdx);
+            const constraint = getConstraint(dayIdx, proIdx);
+            const partialLabel = schedule?.partialConstraints?.[key];
+            const partialTag = partialLabel ? PARTIAL_CONSTRAINT_TAGS[partialLabel] : null;
+            const isActive = activeCell?.dayIdx === dayIdx && activeCell?.proIdx === proIdx;
+            const cellId = `cell-${dayIdx}-${proIdx}`;
+            const hasPending = constraint?.status === "pending";
+            const idleWhy = loadInfo?.idleCells.get(key);
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "td",
+              {
+                id: cellId,
+                className: [
+                  "td-cell",
+                  getCellColor(val, day.isWeekend),
+                  isActive ? "cell-active" : "",
+                  day.isWeekend ? "weekend-cell" : "",
+                  hasPending ? "cell-has-constraint" : "",
+                  idleWhy ? "cell-judge-idle" : ""
+                ].join(" "),
+                title: idleWhy,
+                onClick: (e) => handleCellClick(dayIdx, proIdx, e.currentTarget),
+                children: [
+                  partialTag && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `partial-tag partial-tag-cell ${partialTag.color}`, title: partialLabel, children: partialTag.abbr }),
+                  val && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `cell-text ${day.isWeekend && val.label === "ת. עצורים" ? "cell-text-weekend-detention" : ""}`, children: val.label }),
+                    val.subNote && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "cell-subnote", children: val.subNote })
+                  ] }),
+                  constraint && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `cell-constraint-tag constraint-${constraint.status}`, children: constraint.status === "pending" ? `⚠ ${constraint.label}` : `✓ ${constraint.label}` })
+                ]
+              },
+              proIdx
+            );
+          })
+        ] }, dayIdx);
+      }) })
     ] }) }),
     activeCell && /* @__PURE__ */ jsxRuntimeExports.jsx(
       CellPopover,
@@ -13591,9 +15168,13 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
         config,
         current: getCell(activeCell.dayIdx, activeCell.proIdx),
         onSelect: handleSelect,
+        onSubNote: handleSubNote,
         onClose: () => setActiveCell(null),
         anchorRef: cellRef,
-        isWeekend: days[activeCell.dayIdx].isWeekend
+        isWeekend: days[activeCell.dayIdx].isWeekend,
+        constraint: getConstraint(activeCell.dayIdx, activeCell.proIdx),
+        onApprove: handleApprove,
+        onReject: handleReject
       }
     ),
     fillColumnIdx !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -13607,24 +15188,78 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
         isWeekend: false,
         fillMode: true
       }
-    )
+    ),
+    showImport && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ImportScheduleModal,
+      {
+        schedule,
+        config,
+        onApply: setSchedule,
+        onAddOptions: handleAddOptions,
+        onClose: () => setShowImport(false)
+      }
+    ),
+    showJudgeLoad && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      JudgeLoadModal,
+      {
+        schedule,
+        config,
+        onApply: setSchedule,
+        onSaveConfig: saveConfig,
+        onClose: () => setShowJudgeLoad(false)
+      }
+    ),
+    showLinkModal && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "modal-overlay", onClick: () => setShowLinkModal(false), children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal", onClick: (e) => e.stopPropagation(), children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "קישור לטופס אילוצים לעובדים" }),
+      !config.constraintsScriptUrl ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "modal-hint", children: "⚠️ כדי לפעול, יש להגדיר את כתובת ה-Google Apps Script בהגדרות השלוחה." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "modal-hint", children: "שלח/י קישור זה לוואטסאפ הקבוצתי. העובדים יוכלו לסמן אילוצים ישירות מהטלפון." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "link-box", children: /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: buildFormUrl(schedule, config) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "modal-actions", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: "btn btn-secondary",
+              onClick: () => navigator.clipboard.writeText(buildFormUrl(schedule, config)),
+              children: "העתק קישור"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: "btn btn-primary",
+              onClick: () => {
+                const url = buildFormUrl(schedule, config);
+                const text = encodeURIComponent(`סידור ${rangeLabel(schedule.startDate, schedule.endDate)} — אנא מלאו אילוצים עד ${schedule.endDate}:
+${url}`);
+                window.open(`https://wa.me/?text=${text}`);
+              },
+              children: "📲 שתף בוואטסאפ"
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "btn btn-ghost", style: { marginTop: 12 }, onClick: () => setShowLinkModal(false), children: "סגור" })
+    ] }) })
   ] });
 }
 function App() {
   const { config, loadConfig } = useConfig();
   const [tab, setTab] = reactExports.useState("list");
   const [editingId, setEditingId] = reactExports.useState(null);
+  const [configReady, setConfigReady] = reactExports.useState(false);
   reactExports.useEffect(() => {
-    loadConfig().then(() => {
-    });
+    loadConfig().then(() => setConfigReady(true));
   }, [loadConfig]);
   reactExports.useEffect(() => {
-    if (config === null) setTab("settings");
-  }, [config]);
+    if (configReady && config === null) setTab("settings");
+  }, [configReady, config]);
   const openEditor = (id) => {
     setEditingId(id);
     setTab("editor");
   };
+  if (!configReady) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "app", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "app-content", style: { display: "flex", alignItems: "center", justifyContent: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "loading", children: "טוען…" }) }) });
+  }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "app", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("nav", { className: "app-nav", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(

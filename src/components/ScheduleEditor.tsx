@@ -1,11 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { AppConfig, CellValue, ScheduleData, Constraints, ConstraintEntry } from '../types'
 import { getDaysForSchedule, dayLabel, rangeLabel } from '../utils/dateUtils'
-import { useSchedule } from '../store/useAppStore'
+import { useSchedule, useConfig } from '../store/useAppStore'
+import ImportScheduleModal from './ImportScheduleModal'
+import JudgeLoadModal from './JudgeLoadModal'
+import { analyzeLoad, breakdown, sittingsText, keyJudge, keyCourt, shortCourt } from '../utils/judgeLoad'
 import CellPopover from './CellPopover'
 import { generateHTML } from '../utils/htmlExport'
 import { generatePDF } from '../utils/pdfExport'
-import { HEBREW_DAYS, HEBREW_MONTHS } from '../types'
+import { HEBREW_DAYS, HEBREW_MONTHS, GENERAL_OPTIONS, SUPERVISOR_OPTIONS } from '../types'
 
 interface Props {
   scheduleId: string
@@ -122,7 +125,11 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
 
   const [pagesPublishing, setPagesPublishing] = useState(false)
   const [pagesLink, setPagesLink]             = useState<string | null>(null)
+  const [pagesVerified, setPagesVerified]     = useState<boolean | null>(null)
   const [showLinkModal, setShowLinkModal]   = useState(false)
+  const [showImport, setShowImport]         = useState(false)
+  const [showJudgeLoad, setShowJudgeLoad]   = useState(false)
+  const { saveConfig } = useConfig()
   const [importError, setImportError]       = useState<string | null>(null)
   const [editingDayNote, setEditingDayNote] = useState<number | null>(null)
   const [dayNoteInput, setDayNoteInput]     = useState('')
@@ -138,6 +145,14 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
   )
   const avgLoad = config.prosecutors.length > 0
     ? loadCounts.reduce((a, b) => a + b, 0) / config.prosecutors.length : 0
+
+  // יומן שופטים (פנימי — לא נכנס לייצוא לתובעים)
+  const loadInfo = schedule ? analyzeLoad(schedule, config, days) : null
+  const loadIssues = loadInfo ? loadInfo.uncovered.length + loadInfo.idleCells.size + loadInfo.busy.length : 0
+  const shortDay = (dayIdx: number) => {
+    const d = days[dayIdx]
+    return `${HEBREW_DAYS[d.dayOfWeek]} ${d.dayOfMonth}.${d.month}`
+  }
 
   // Pending constraints count badge
   const pendingCount = schedule?.constraints
@@ -337,10 +352,12 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     if (!schedule || !config.githubToken) return
     setPagesPublishing(true)
     setPagesLink(null)
+    setPagesVerified(null)
     try {
       const html = generateHTML(schedule, config)
-      const link = await window.api.pages.publish(config.githubToken, html)
-      setPagesLink(link)
+      const { url, verified } = await window.api.pages.publish(config.githubToken, html)
+      setPagesLink(url)
+      setPagesVerified(verified)
     } catch (e) {
       alert('שגיאה בפרסום: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
@@ -371,6 +388,39 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
     }
   }
 
+  // ── Template for the person who builds the schedule ───────────────────────
+  const handleExportTemplate = async () => {
+    if (!schedule) return
+    const options = [...new Set([
+      ...config.judges,
+      'ת. עצורים',
+      ...(config.generalOptions ?? GENERAL_OPTIONS),
+      ...SUPERVISOR_OPTIONS,
+    ])]
+    const rows = days.map((day, di) => ({
+      date: `${String(day.dayOfMonth).padStart(2, '0')}.${String(day.month).padStart(2, '0')}.${String(day.year).slice(2)}`,
+      day: HEBREW_DAYS[day.dayOfWeek],
+      weekend: day.isWeekend,
+      sittings: loadInfo ? sittingsText(loadInfo, di) : undefined,
+      cells: config.prosecutors.map((_, pi) => {
+        const v = schedule.assignments[`${di}-${pi}`]
+        return v ? v.label + (v.subNote ? ` (${v.subNote})` : '') : ''
+      }),
+    }))
+    await window.api.export.template({
+      filename: `תבנית-סידור-${config.branch.trim()}-${schedule.startDate}.xlsx`,
+      title: `סידור עבודה ${config.branch.trim()} — ${rangeLabel(schedule.startDate, schedule.endDate)}`,
+      prosecutors: config.prosecutors,
+      rows,
+      options,
+    })
+  }
+
+  const handleAddOptions = (labels: string[]) => {
+    const current = config.generalOptions ?? GENERAL_OPTIONS
+    saveConfig({ ...config, generalOptions: [...current, ...labels.filter(l => !current.includes(l))] })
+  }
+
   if (!schedule) {
     return <div className="screen"><div className="loading">טוען…</div></div>
   }
@@ -388,6 +438,20 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
         <div className="header-actions">
           <button className="btn btn-ghost btn-undo" onClick={undo} disabled={!canUndo} title="בטל (Ctrl+Z)">↺</button>
           <button className="btn btn-ghost btn-undo" onClick={redo} disabled={!canRedo} title="חזור (Ctrl+Y)">↻</button>
+
+          <button className="btn btn-secondary" onClick={() => setShowImport(true)} title="עדכון הסידור מטבלת Excel / הדבקה">
+            📋 ייבוא סידור
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowJudgeLoad(true)}
+            title="מספר הדיונים לכל שופט מנט המשפט — מוצג רק כאן ובתבנית למכין, לא בסידור לתובעים"
+          >
+            ⚖️ יומן שופטים{loadIssues > 0 ? ` (${loadIssues})` : ''}
+          </button>
+          <button className="btn btn-secondary" onClick={handleExportTemplate} title="קובץ Excel עם רשימות נפתחות — לשליחה למי שמכין את הסידור">
+            📤 תבנית למכין הסידור
+          </button>
 
           {/* Import constraints */}
           <input
@@ -435,12 +499,24 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
       </div>
 
       {pagesLink && (
-        <div className="drive-success-bar">
-          ✓ פורסם! הקישור הועתק ללוח:{' '}
-          <a href="#" onClick={e => { e.preventDefault(); window.open(pagesLink) }} style={{ color: '#1d4ed8', fontWeight: 600 }}>
-            {pagesLink}
-          </a>
-          <button onClick={() => setPagesLink(null)}>✕</button>
+        <div className="drive-success-bar" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+            {pagesVerified === true  && <span style={{ color: '#16a34a', fontWeight: 700 }}>✅ הסידור עלה בהצלחה לגיטהאב</span>}
+            {pagesVerified === false && <span style={{ color: '#dc2626', fontWeight: 700 }}>⚠️ הועלה אך האימות נכשל — נסה שוב</span>}
+            {pagesVerified === null  && <span style={{ color: '#d97706', fontWeight: 700 }}>⏳ מאמת…</span>}
+            <button onClick={() => { setPagesLink(null); setPagesVerified(null) }} style={{ marginRight: 'auto' }}>✕</button>
+          </div>
+          <div>
+            הקישור הועתק ללוח:{' '}
+            <a href="#" onClick={e => { e.preventDefault(); window.open(pagesLink) }} style={{ color: '#1d4ed8', fontWeight: 600 }}>
+              {pagesLink}
+            </a>
+          </div>
+          {pagesVerified && (
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              ייתכן שייקח 2-3 דקות עד שהשינוי יופיע בלינק — רענן את הדף אם רואים גרסה ישנה
+            </div>
+          )}
         </div>
       )}
 
@@ -450,6 +526,30 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
           ⚠️ {importError}
           <button onClick={() => setImportError(null)}>✕</button>
         </div>
+      )}
+
+      {loadInfo && loadIssues > 0 && (
+        <details className="judge-load-bar">
+          <summary>
+            ⚖️ יומן שופטים:
+            {loadInfo.uncovered.length > 0 && <> <strong>{loadInfo.uncovered.length}</strong> ישיבות בלי תובע</>}
+            {loadInfo.idleCells.size > 0 && <> · <strong>{loadInfo.idleCells.size}</strong> שיבוצים לשופט שלא יושב</>}
+            {loadInfo.busy.length > 0 && <> · <strong>{loadInfo.busy.length}</strong> ימים עמוסים עם תובע אחד</>}
+            <span className="judge-load-bar-hint"> (לחץ לפירוט)</span>
+          </summary>
+          <ul>
+            {loadInfo.uncovered.map(({ dayIdx, ds }) => (
+              <li key={`u${dayIdx}${ds.key}`}>🔴 {shortDay(dayIdx)} — {ds.labels[0]} יושב/ת ({ds.sitting.total} דיונים) ואין תובע</li>
+            ))}
+            {[...loadInfo.idleCells.entries()].map(([key, why]) => {
+              const [d, p] = key.split('-').map(Number)
+              return <li key={`i${key}`}>🟠 {shortDay(d)} — {config.prosecutors[p]}: {why}</li>
+            })}
+            {loadInfo.busy.map(({ dayIdx, ds }) => (
+              <li key={`b${dayIdx}${ds.key}`}>🟡 {shortDay(dayIdx)} — {ds.labels[0]}: {ds.sitting.total} דיונים ({breakdown(ds.sitting)}) עם {config.prosecutors[ds.prosecutors[0]]} בלבד</li>
+            ))}
+          </ul>
+        </details>
       )}
 
       {pendingCount > 0 && (
@@ -490,6 +590,11 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                     </div>
                     <div className="pro-stats">
                       <span className="pro-count">{count}/{workdays}</span>
+                      {loadInfo && (
+                        <span className="pro-hearings" title="דיונים לפי יומן השופטים (כששני תובעים על אותו שופט — מתחלק). רק לך — לא בסידור לתובעים">
+                          ⚖️ {loadInfo.proHearings[proIdx]}
+                        </span>
+                      )}
                       <div className="pro-bar">
                         <div className="pro-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
                       </div>
@@ -529,6 +634,21 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                       </div>
                     ) : (
                       <>
+                        {loadInfo?.loadedDays.has(dayIdx) && (
+                          <div className="day-sittings">
+                            {(loadInfo.perDay.get(dayIdx) ?? []).length === 0
+                              ? <span className="sit-none">אין ישיבות</span>
+                              : (loadInfo.perDay.get(dayIdx) ?? []).map(ds => (
+                                <span
+                                  key={ds.key}
+                                  className={`sit ${ds.prosecutors.length === 0 ? 'sit-uncovered' : ''}`}
+                                  title={`${keyJudge(ds.key)} · ${shortCourt(keyCourt(ds.key))}\n${breakdown(ds.sitting)}${ds.prosecutors.length === 0 ? '\nאין תובע!' : ''}`}
+                                >
+                                  {ds.labels[0]} {ds.sitting.total}
+                                </span>
+                              ))}
+                          </div>
+                        )}
                         {schedule?.dayNotes?.[dayIdx] && (
                           <div className="day-note-badge">{schedule.dayNotes[dayIdx]}</div>
                         )}
@@ -553,6 +673,7 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                     const isActive       = activeCell?.dayIdx === dayIdx && activeCell?.proIdx === proIdx
                     const cellId         = `cell-${dayIdx}-${proIdx}`
                     const hasPending     = constraint?.status === 'pending'
+                    const idleWhy        = loadInfo?.idleCells.get(key)
                     return (
                       <td
                         key={proIdx}
@@ -563,7 +684,9 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
                           isActive ? 'cell-active' : '',
                           day.isWeekend ? 'weekend-cell' : '',
                           hasPending ? 'cell-has-constraint' : '',
+                          idleWhy ? 'cell-judge-idle' : '',
                         ].join(' ')}
+                        title={idleWhy}
                         onClick={e => handleCellClick(dayIdx, proIdx, e.currentTarget as HTMLElement)}
                       >
                         {partialTag && (
@@ -620,6 +743,26 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
           anchorRef={{ current: fillBtnRefs.current[fillColumnIdx] } as React.RefObject<HTMLElement | null>}
           isWeekend={false}
           fillMode
+        />
+      )}
+
+      {showImport && (
+        <ImportScheduleModal
+          schedule={schedule}
+          config={config}
+          onApply={setSchedule}
+          onAddOptions={handleAddOptions}
+          onClose={() => setShowImport(false)}
+        />
+      )}
+
+      {showJudgeLoad && (
+        <JudgeLoadModal
+          schedule={schedule}
+          config={config}
+          onApply={setSchedule}
+          onSaveConfig={saveConfig}
+          onClose={() => setShowJudgeLoad(false)}
         />
       )}
 

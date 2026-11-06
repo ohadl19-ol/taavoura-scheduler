@@ -760,3 +760,48 @@ html, body, #root {
   padding: 2px 8px;
   border-radius: 4px;
 }
+
+/* ── Import schedule modal ─────────────────────────────────────────── */
+.import-modal { width: min(760px, 92vw); max-height: 88vh; }
+.paste-zone {
+  border: 2px dashed var(--gray-300); border-radius: 10px; padding: 36px 16px;
+  text-align: center; color: var(--gray-500); font-size: 15px; cursor: text; outline: none;
+}
+.paste-zone:focus { border-color: var(--blue-light); background: #eff6ff; color: var(--blue); }
+.import-summary { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: #eff6ff; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: var(--blue); }
+.import-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px;
+  padding: 6px 10px; font-size: 12.5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.btn-xs { padding: 2px 8px; font-size: 12px; }
+.import-nochange { text-align: center; padding: 20px; color: #16a34a; font-weight: 600; }
+.import-changes { overflow-y: auto; flex: 1; min-height: 120px; border: 1px solid var(--gray-200, #e5e7eb); border-radius: 8px; }
+.import-day { border-bottom: 1px solid var(--gray-200, #e5e7eb); padding: 6px 10px; }
+.import-day:last-child { border-bottom: none; }
+.import-day-title { flex-direction: row !important; align-items: center; gap: 8px !important; font-weight: 700 !important;
+  color: var(--blue) !important; font-size: 13.5px !important; cursor: pointer; }
+.import-day-count { background: #dbeafe; border-radius: 10px; padding: 0 7px; font-size: 11px; }
+.import-row { flex-direction: row !important; align-items: center; gap: 8px !important; padding: 2px 22px 2px 0;
+  font-weight: 400 !important; cursor: pointer; }
+.import-row.off { opacity: .4; text-decoration: line-through; }
+.import-pro { min-width: 64px; font-weight: 600; }
+.import-before { color: #b91c1c; }
+.import-arrow { color: var(--gray-500); }
+.import-after { color: #15803d; font-weight: 600; }
+.modal input[type="checkbox"] { padding: 0; width: 15px; height: 15px; }
+
+/* ── יומן שופטים (פנימי) ─────────────────────────────────────────────── */
+.day-sittings { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 3px; }
+.day-sittings .sit { font-size: 0.66rem; background: #fff7ed; color: #7c2d12; border: 1px solid #fed7aa; border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+.day-sittings .sit-uncovered { background: #fee2e2; color: #991b1b; border-color: #fca5a5; font-weight: 700; }
+.day-sittings .sit-none { font-size: 0.66rem; color: #9ca3af; }
+.td-cell.cell-judge-idle { outline: 2px dashed #f97316; outline-offset: -3px; }
+.pro-hearings { font-size: 0.68rem; color: #7c2d12; margin-inline-start: 4px; }
+.judge-load-bar { background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12; border-radius: 8px; padding: 6px 12px; margin: 6px 16px; font-size: 0.85rem; }
+.judge-load-bar summary { cursor: pointer; }
+.judge-load-bar-hint { color: #9a3412; font-size: 0.75rem; opacity: 0.8; }
+.judge-load-bar ul { margin: 6px 0 2px; padding-inline-start: 18px; }
+.judge-load-bar li { margin: 2px 0; }
+.judge-load-modal { max-width: 560px; max-height: 85vh; overflow-y: auto; }
+.judge-map-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.judge-map-table th, .judge-map-table td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; text-align: right; }
+.judge-map-table select { width: 100%; padding: 3px; }

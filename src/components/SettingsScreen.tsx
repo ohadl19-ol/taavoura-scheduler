@@ -27,7 +27,10 @@ export default function SettingsScreen({ onDone }: Props) {
   const [optDragIdx, setOptDragIdx] = useState<number | null>(null)
   const [optDragOver, setOptDragOver] = useState<number | null>(null)
 
+  const [storage, setStorage] = useState<{ dir: string; isDefault: boolean; missingCustom: boolean } | null>(null)
+
   useEffect(() => { loadConfig() }, [loadConfig])
+  useEffect(() => { window.api.storage.info().then(setStorage) }, [])
 
   useEffect(() => {
     if (config) {
@@ -43,6 +46,7 @@ export default function SettingsScreen({ onDone }: Props) {
   }, [config])
 
   const currentData = (): AppConfig => ({
+    ...(config ?? {}),   // שומר שדות שלא נערכים במסך הזה (התאמת יומן שופטים וכו')
     unit_name: unitName,
     branch,
     prosecutors,
@@ -226,6 +230,25 @@ export default function SettingsScreen({ onDone }: Props) {
               />
               <button className="btn btn-add" onClick={addJudge}>הוסף</button>
             </div>
+          </div>
+        </section>
+
+        {/* Data folder */}
+        <section className="settings-card">
+          <h2>📁 מיקום הנתונים</h2>
+          <p className="hint">
+            הסידורים וההגדרות נשמרים בתיקייה הזו. אפשר להעביר אותם לתיקייה נגישה (למשל iCloud Drive) —
+            הנתונים הקיימים יועתקו אליה והאפליקציה תיפתח מחדש.
+          </p>
+          {storage?.missingCustom && (
+            <p className="hint" style={{ color: '#b91c1c' }}>⚠️ התיקייה שנבחרה בעבר לא נמצאה — האפליקציה עובדת כרגע מהמיקום הרגיל.</p>
+          )}
+          <div className="link-box" style={{ direction: 'ltr', fontSize: '0.78rem', wordBreak: 'break-all' }}>
+            <code>{storage?.dir ?? '…'}</code>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" onClick={() => window.api.storage.choose()}>בחר תיקייה אחרת…</button>
+            <button className="btn btn-ghost" onClick={() => window.api.storage.open()}>פתח ב-Finder</button>
           </div>
         </section>
 

@@ -53,7 +53,7 @@ async function enablePages(token: string): Promise<void> {
   // Don't throw — it might already be enabled (409 is fine)
 }
 
-export async function publishToPages(token: string, html: string): Promise<string> {
+export async function publishToPages(token: string, html: string): Promise<{ url: string, verified: boolean }> {
   await ensureBranch(token)
 
   // Get current file SHA if it exists (needed for update)
@@ -82,7 +82,18 @@ export async function publishToPages(token: string, html: string): Promise<strin
     throw new Error(`GitHub publish failed: ${text}`)
   }
 
+  const putData = await putResp.json() as { content: { sha: string } }
+  const newSha = putData.content.sha
+
   await enablePages(token)
 
-  return `https://${OWNER}.github.io/${REPO}/`
+  // Verify: re-fetch the file and confirm the SHA matches
+  const verifyResp = await ghFetch(token, `/contents/${FILE}?ref=${BRANCH}`)
+  let verified = false
+  if (verifyResp.ok) {
+    const verifyData = await verifyResp.json() as { sha: string }
+    verified = verifyData.sha === newSha
+  }
+
+  return { url: `https://${OWNER}.github.io/${REPO}/`, verified }
 }
