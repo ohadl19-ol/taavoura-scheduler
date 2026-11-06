@@ -13191,7 +13191,7 @@ function parseScheduleTable(grid, schedule, config) {
   if (dateCol === -1) return { ok: false, error: "לא נמצאה עמודת תאריכים בטבלה." };
   const days = getDaysForSchedule(startDate, endDate);
   const dayIndex = new Map(days.map((d, i) => [d.date, i]));
-  const unknownColumns = rows[header.row].map((h, c) => ({ h: cleanText(h), c })).filter(({ h, c }) => h && c !== dateCol && !header.cols.has(c) && !/^(יום|תאריך|יושבים היום)$/.test(h)).filter(({ c }) => rows.slice(header.row + 1).some((r) => (r[c] ?? "").trim() && !/^[אבגדהוש]['׳]?$/.test(r[c].trim()))).map(({ h }) => h);
+  const unknownColumns = rows[header.row].map((h, c) => ({ h: cleanText(h), c })).filter(({ h, c }) => h && c !== dateCol && !header.cols.has(c) && !/^(יום|תאריך|יושבים היום)$/.test(h) && !h.startsWith("⚖️")).filter(({ c }) => rows.slice(header.row + 1).some((r) => (r[c] ?? "").trim() && !/^[אבגדהוש]['׳]?$/.test(r[c].trim()))).map(({ h }) => h);
   const changes = [];
   const datesRead = [];
   const outOfRange = /* @__PURE__ */ new Set();
@@ -13679,11 +13679,13 @@ function breakdown(s) {
     s.other && `אחר ${s.other}`
   ].filter(Boolean).join(" · ");
 }
-function sittingsText(a, dayIdx) {
-  if (!a.loadedDays.has(dayIdx)) return "";
-  const list = a.perDay.get(dayIdx) ?? [];
-  if (!list.length) return "אין ישיבות";
-  return list.map((ds) => `${ds.label} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ""}`).join(" · ");
+function trackedJudges(config, map) {
+  const byKey = /* @__PURE__ */ new Map();
+  for (const j of config.judges) {
+    const k = map[j];
+    if (k) byKey.set(k, [...byKey.get(k) ?? [], j]);
+  }
+  return [...byKey.entries()].map(([key, labels]) => ({ key, label: displayLabel(labels) }));
 }
 const DEFAULT_DIARY_COURTS = ["שלום נוף הגליל-נצרת", "שלום טבריה"];
 function sundaysOf(start, end) {
@@ -14895,11 +14897,18 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
       ...config.generalOptions ?? GENERAL_OPTIONS,
       ...SUPERVISOR_OPTIONS
     ])];
+    const tracked = loadInfo ? trackedJudges(config, loadInfo.map) : [];
     const rows = days.map((day, di) => ({
       date: `${String(day.dayOfMonth).padStart(2, "0")}.${String(day.month).padStart(2, "0")}.${String(day.year).slice(2)}`,
       day: HEBREW_DAYS[day.dayOfWeek],
       weekend: day.isWeekend,
-      sittings: loadInfo ? sittingsText(loadInfo, di) : void 0,
+      judges: tracked.length ? tracked.map((t) => {
+        const list = schedule.judgeLoad?.days[day.date];
+        if (!list || day.isWeekend) return null;
+        const s = findSitting(list, t.key);
+        return s ? { n: s.total, note: `${keyJudge(t.key)} · ${shortCourt(s.court)}
+${breakdown(s)}` } : { n: 0, note: `${keyJudge(t.key)} לא יושב/ת ביום הזה` };
+      }) : void 0,
       cells: config.prosecutors.map((_, pi) => {
         const v = schedule.assignments[`${di}-${pi}`];
         return v ? v.label + (v.subNote ? ` (${v.subNote})` : "") : "";
@@ -14910,7 +14919,9 @@ function ScheduleEditor({ scheduleId, config, onBack }) {
       title: `סידור עבודה ${config.branch.trim()} — ${rangeLabel(schedule.startDate, schedule.endDate)}`,
       prosecutors: config.prosecutors,
       rows,
-      options
+      options,
+      judgeCols: tracked.length ? tracked.map((t) => ({ label: t.label, match: t.label })) : void 0,
+      busyThreshold: config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD
     });
   };
   const handleAddOptions = (labels) => {

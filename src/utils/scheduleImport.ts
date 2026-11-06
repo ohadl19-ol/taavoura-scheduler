@@ -200,7 +200,7 @@ export function parseScheduleTable(grid: Grid, schedule: ScheduleData, config: A
 
   const unknownColumns = rows[header.row]
     .map((h, c) => ({ h: cleanText(h), c }))
-    .filter(({ h, c }) => h && c !== dateCol && !header.cols.has(c) && !/^(יום|תאריך|יושבים היום)$/.test(h))
+    .filter(({ h, c }) => h && c !== dateCol && !header.cols.has(c) && !/^(יום|תאריך|יושבים היום)$/.test(h) && !h.startsWith('⚖️'))
     .filter(({ c }) => rows.slice(header.row + 1).some(r => (r[c] ?? '').trim() && !/^[אבגדהוש]['׳]?$/.test(r[c].trim())))
     .map(({ h }) => h)
 

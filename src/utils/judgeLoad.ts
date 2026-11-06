@@ -217,7 +217,7 @@ export function analyzeLoad(schedule: ScheduleData, config: AppConfig, days: Day
 }
 
 /** כמה שמות בסידור לאותו שופט ("שירלי נצרת", "שירלי טבריה") — המילים המשותפות ("שירלי") */
-function displayLabel(labels: string[]): string {
+export function displayLabel(labels: string[]): string {
   if (labels.length === 1) return labels[0]
   const words = labels.map(l => l.split(/\s+/))
   const common = words[0].filter(w => words.every(ws => ws.includes(w)))
@@ -238,4 +238,14 @@ export function sittingsText(a: LoadAnalysis, dayIdx: number): string {
   const list = a.perDay.get(dayIdx) ?? []
   if (!list.length) return 'אין ישיבות'
   return list.map(ds => `${ds.label} ${ds.sitting.total}${ds.sitting.proof ? ` (הוכחות ${ds.sitting.proof})` : ''}`).join(' · ')
+}
+
+/** השופטים שנבדקים (לפי ההתאמה), בסדר שבהגדרות — שם תצוגה + מפתח ביומן. לתבנית למכין. */
+export function trackedJudges(config: AppConfig, map: Record<string, string>): { key: string; label: string }[] {
+  const byKey = new Map<string, string[]>()
+  for (const j of config.judges) {
+    const k = map[j]
+    if (k) byKey.set(k, [...(byKey.get(k) ?? []), j])
+  }
+  return [...byKey.entries()].map(([key, labels]) => ({ key, label: displayLabel(labels) }))
 }

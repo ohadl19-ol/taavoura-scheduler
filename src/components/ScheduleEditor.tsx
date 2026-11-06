@@ -4,7 +4,7 @@ import { getDaysForSchedule, dayLabel, rangeLabel } from '../utils/dateUtils'
 import { useSchedule, useConfig } from '../store/useAppStore'
 import ImportScheduleModal from './ImportScheduleModal'
 import JudgeLoadModal from './JudgeLoadModal'
-import { analyzeLoad, breakdown, sittingsText, keyJudge, keyCourt, shortCourt } from '../utils/judgeLoad'
+import { analyzeLoad, breakdown, keyJudge, keyCourt, shortCourt, trackedJudges, findSitting, DEFAULT_BUSY_THRESHOLD } from '../utils/judgeLoad'
 import CellPopover from './CellPopover'
 import { generateHTML } from '../utils/htmlExport'
 import { generatePDF } from '../utils/pdfExport'
@@ -397,11 +397,21 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
       ...(config.generalOptions ?? GENERAL_OPTIONS),
       ...SUPERVISOR_OPTIONS,
     ])]
+    const tracked = loadInfo ? trackedJudges(config, loadInfo.map) : []
     const rows = days.map((day, di) => ({
       date: `${String(day.dayOfMonth).padStart(2, '0')}.${String(day.month).padStart(2, '0')}.${String(day.year).slice(2)}`,
       day: HEBREW_DAYS[day.dayOfWeek],
       weekend: day.isWeekend,
-      sittings: loadInfo ? sittingsText(loadInfo, di) : undefined,
+      judges: tracked.length
+        ? tracked.map(t => {
+            const list = schedule.judgeLoad?.days[day.date]
+            if (!list || day.isWeekend) return null
+            const s = findSitting(list, t.key)
+            return s
+              ? { n: s.total, note: `${keyJudge(t.key)} · ${shortCourt(s.court)}\n${breakdown(s)}` }
+              : { n: 0, note: `${keyJudge(t.key)} לא יושב/ת ביום הזה` }
+          })
+        : undefined,
       cells: config.prosecutors.map((_, pi) => {
         const v = schedule.assignments[`${di}-${pi}`]
         return v ? v.label + (v.subNote ? ` (${v.subNote})` : '') : ''
@@ -413,6 +423,8 @@ export default function ScheduleEditor({ scheduleId, config, onBack }: Props) {
       prosecutors: config.prosecutors,
       rows,
       options,
+      judgeCols: tracked.length ? tracked.map(t => ({ label: t.label, match: t.label })) : undefined,
+      busyThreshold: config.busyDayThreshold ?? DEFAULT_BUSY_THRESHOLD,
     })
   }
 

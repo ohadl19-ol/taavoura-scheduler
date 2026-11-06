@@ -3,6 +3,7 @@ import { join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync, cpSync } from 'fs'
 import { publishToPages } from './githubPages'
 import { fetchCourtDiary, type DiaryRequest } from './courtDiary'
+import { writeTemplate, type TemplatePayload } from './template'
 import ExcelJS from 'exceljs'
 
 const isDev = process.env['NODE_ENV'] === 'development'
@@ -339,14 +340,6 @@ ipcMain.handle('import:pickTable', async () => {
 
 // ── IPC: Template for the person who builds the schedule ────────────────────
 
-interface TemplatePayload {
-  filename: string
-  title: string
-  prosecutors: string[]
-  rows: { date: string; day: string; weekend: boolean; cells: string[]; sittings?: string }[]
-  options: string[]
-}
-
 ipcMain.handle('export:template', async (_e, p: TemplatePayload) => {
   const { filePath } = await dialog.showSaveDialog({
     title: 'שמור תבנית סידור',
@@ -354,70 +347,7 @@ ipcMain.handle('export:template', async (_e, p: TemplatePayload) => {
     filters: [{ name: 'Excel', extensions: ['xlsx'] }],
   })
   if (!filePath) return false
-
-  // עמודת "יושבים היום" (מיומן השופטים) — רק בתבנית למכין, לא בסידור לתובעים
-  const withSit = p.rows.some(r => r.sittings)
-  const lead = withSit ? 3 : 2
-  const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet('סידור', { views: [{ rightToLeft: true, state: 'frozen', xSplit: lead, ySplit: 2 }] })
-  const lists = wb.addWorksheet('רשימות', { state: 'hidden' })
-  p.options.forEach((o, i) => { lists.getCell(i + 1, 1).value = o })
-
-  const lastCol = p.prosecutors.length + lead
-  ws.mergeCells(1, 1, 1, lastCol)
-  const t = ws.getCell(1, 1)
-  t.value = p.title
-  t.font = { bold: true, size: 13, color: { argb: 'FF1E3A5F' } }
-  t.alignment = { horizontal: 'center' }
-
-  const hdr = ws.getRow(2)
-  ;['תאריך', 'יום', ...(withSit ? ['יושבים היום'] : []), ...p.prosecutors].forEach((h, i) => { hdr.getCell(i + 1).value = h })
-  hdr.eachCell(c => {
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } }
-    c.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-    c.alignment = { horizontal: 'center' }
-  })
-
-  const listRef = `'רשימות'!$A$1:$A$${Math.max(1, p.options.length)}`
-  p.rows.forEach((r, i) => {
-    const row = ws.getRow(i + 3)
-    row.getCell(1).value = r.date
-    row.getCell(2).value = r.day
-    if (withSit) row.getCell(3).value = r.sittings || null
-    r.cells.forEach((v, ci) => { row.getCell(ci + lead + 1).value = v || null })
-    for (let c = 1; c <= lastCol; c++) {
-      const cell = row.getCell(c)
-      cell.alignment = { horizontal: 'center' }
-      cell.border = { bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } }, left: { style: 'thin', color: { argb: 'FFE5E7EB' } } }
-      if (r.weekend) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }
-      if (c <= 2) cell.font = { bold: true }
-      else if (c === 3 && withSit) {
-        cell.font = { size: 9, color: { argb: 'FF7C2D12' } }
-        cell.alignment = { horizontal: 'right', vertical: 'middle', wrapText: true }
-        if (!r.weekend) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7ED' } }
-      }
-      else cell.dataValidation = {
-        type: 'list', allowBlank: true, formulae: [listRef],
-        showErrorMessage: false,  // מותר גם להקליד טקסט חופשי
-      }
-    }
-  })
-
-  ws.getColumn(1).width = 12
-  ws.getColumn(2).width = 8
-  if (withSit) ws.getColumn(3).width = 30
-  for (let c = lead + 1; c <= lastCol; c++) ws.getColumn(c).width = 14
-
-  const note = ws.getRow(p.rows.length + 4).getCell(1)
-  note.value = 'בחרו מהרשימה הנפתחת בכל תא, או הקלידו טקסט חופשי. אין לשנות את שמות התובעים בכותרת ואת עמודת התאריך.'
-  note.font = { italic: true, color: { argb: 'FF6B7280' } }
-  if (withSit) {
-    const n2 = ws.getRow(p.rows.length + 5).getCell(1)
-    n2.value = '"יושבים היום" — מספר הדיונים לכל שופט לפי נט המשפט (לא כולל תיקים חסויים), לעזרה בשיבוץ. לשימוש פנימי — לא להעביר לתובעים.'
-    n2.font = { italic: true, color: { argb: 'FF7C2D12' } }
-  }
-
-  await wb.xlsx.writeFile(filePath)
+  await writeTemplate(p, filePath)
   shell.showItemInFolder(filePath)
   return true
 })

@@ -97,8 +97,10 @@ declare global {
           filename: string
           title: string
           prosecutors: string[]
-          rows: { date: string; day: string; weekend: boolean; cells: string[]; sittings?: string }[]
+          rows: { date: string; day: string; weekend: boolean; cells: string[]; judges?: ({ n: number; note: string } | null)[] }[]
           options: string[]
+          judgeCols?: { label: string; match: string }[]
+          busyThreshold?: number
         }): Promise<boolean>
       }
       importTable: {
